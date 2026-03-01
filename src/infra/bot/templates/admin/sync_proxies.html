@@ -1,0 +1,8 @@
+{% extends "admin/base.html" %}
+{% block message %}
+    {% if succeed %}
+        {{ _("Sync proxies has been started.") }}
+    {% else %}
+        {{ _("Some proxies could not be synced. Please check the logs for more details.") }}
+    {% endif %}
+{% endblock %}

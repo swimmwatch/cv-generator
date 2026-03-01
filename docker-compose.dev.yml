@@ -1,0 +1,96 @@
+services:
+  api:
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+
+  worker-beat:
+    depends_on:
+      cache:
+        condition: service_healthy
+
+  worker:
+    depends_on:
+      cache:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      worker-beat:
+        condition: service_started
+
+  minio:
+    image: minio/minio:RELEASE.2025-06-13T11-33-47Z
+    hostname: minio
+    restart: always
+    profiles:
+      - "development"
+      - "main"
+    command: minio server --console-address ":9090" /data
+    env_file: .env
+    ports:
+      - "${MINIO_PUBLIC_UI_PORT}:9090" # web ui
+      - "${MINIO_PUBLIC_PORT}:9000"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9090/minio/health/live" ]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    volumes:
+      - minio_volume:/data
+
+  cache:
+    image: "redis:8.4.0-alpine"
+    restart: unless-stopped
+    profiles:
+      - "development"
+      - "main"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 30s
+      retries: 50
+      start_period: 30s
+    volumes:
+      - cache_volume:/data
+
+  db:
+    image: "postgres:17.7-alpine"
+    restart: unless-stopped
+    profiles:
+      - "development"
+      - "main"
+    env_file: .env
+    volumes:
+      - db_volume:/var/lib/postgresql/data/
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongo:
+    image: "mongo:8.0.10"
+    restart: unless-stopped
+    profiles:
+      - "development"
+      - "main"
+    env_file: .env
+    volumes:
+      - mongo_volume:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  db_volume:
+  cache_volume:
+  minio_volume:
+  mongo_volume:

@@ -1,0 +1,17 @@
+services:
+  db:
+    ports:
+      - "${POSTGRES_PUBLIC_PORT}:5432"
+
+  cache:
+    ports:
+      - "${REDIS_PUBLIC_PORT}:6379"
+
+  mongo:
+    ports:
+      - "${MONGO_PUBLIC_PORT}:27017"
+
+  minio:
+    ports:
+      - "${MINIO_PUBLIC_PORT}:9000"
+      - "${MINIO_PUBLIC_UI_PORT}:9090"

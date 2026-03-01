@@ -1,0 +1,16 @@
+{% set cancel = cancel if (cancel is defined) else true %}
+
+<b>{{ _("Admin") }}</b>
+
+<br>
+<br>
+
+{% block message %}
+{% endblock %}
+
+{% if cancel %}
+    <br>
+    <br>
+
+    {{ _("Or send /cancel to stop talking to me.") }}
+{% endif %}

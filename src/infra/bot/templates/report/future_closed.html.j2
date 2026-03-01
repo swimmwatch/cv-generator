@@ -1,0 +1,13 @@
+{% set qp=qty_prec|default(4) %}{% set pp=price_prec|default(2) %}{% set mp=money_prec|default(2) %}
+{% set qty=executed_qty|default(0.0) %}{% set avg=avg_price|default(0.0) %}
+{% set fees=fees_quote_value|default(0.0) %}{% set funding=funding_paid|default(0.0) %}
+{% set pnl=realized_pnl|default(0.0) %}{% set spent=(fees + funding) %}{% set net=(pnl - spent) %}
+{% set roi=(net / initial_margin * 100) if initial_margin is defined and initial_margin else none %}
+{% set side=(position_side|default(side)|upper) %}{% set side_e='🟢 LONG' if side=='LONG' else ('🔴 SHORT' if side=='SHORT' else side) %}
+
+<b>✅ {{ symbol }}</b> <i>{{ side_e }}{% if leverage %} • {{ leverage }}x{% endif %}{% if margin_mode %} • {{ margin_mode|capitalize }}{% endif %}</i> <br>
+<b>Status:</b> {{ status }}{% if order_type %} • <i>{{ order_type }}</i>{% endif %} <br>
+<b>Qty:</b> {{ qty|round(qp) }} {{ base_asset }} @ {{ avg|round(pp) }} {{ quote_asset }} <br>
+<b>Earned:</b> {{ pnl|round(mp) }} {{ quote_asset }} • <b>Spent:</b> {{ spent|round(mp) }} {{ quote_asset }} <br>
+<b>Net:</b> {{ '🟢' if net>0 else ('🔴' if net<0 else '⚪') }} <b>{{ net|round(mp) }} {{ quote_asset }}</b>{% if roi is not none %} • ROI {{ roi|round(2) }}%{% endif %} <br>
+<code>ID: {{ order_id }}</code>{% if event_time_str %} • {{ event_time_str }}{% endif %} <br>

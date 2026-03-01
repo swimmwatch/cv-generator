@@ -1,0 +1,9 @@
+services:
+  promtail:
+    image: "${IMAGE_PROMTAIL}"
+    build:
+      context: ./docker/promtail
+    volumes:
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    restart: unless-stopped

@@ -1,0 +1,8 @@
+- Always write the simplest possible code: nothing extra, easy to read and understand. The code should be self-explanatory, without comments.  Do not do anything extra. Do only what was requested.
+- Always use context7 MCP tool when you need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask.
+- All project instructions and comments must be written in English.
+- Always ask for clarification if the request is not clear or if you need more information to complete the task.
+- Always run `make format` after completing the task to ensure Python code is properly formatted.
+- Always run `make lint` after completing the task to ensure Python code quality and adherence to coding standards. If there are any linting errors, fix them.
+- Do not use import `from __future__` in Python code.
+- Write class based tests using `pytest` for DALs, Repositories, Services. Use function based tests for functions or simple classes.

@@ -1,0 +1,39 @@
+[tool.black]
+line-length = 120
+target-version = ["py313"]
+
+[tool.flake8]
+inline-quotes = "double"
+ignore = "E203, W503, PL123"
+max-line-length = 120
+per-file-ignores = "src/tests/*.py: S101, src/tests/**/*.py: S101, src/**/tests/*.py: S101, src/**/tests/**/*.py: S101, src/infra/db/utils/dal/async_.py: S101, src/utils/rest/client.py: S101"
+
+[tool.isort]
+profile = "black"
+default_section = "THIRDPARTY"
+force_single_line = true
+line_length = 120
+use_parentheses = true
+py_version=313
+
+[tool.mypy]
+plugins = [
+  "pydantic.mypy",
+  "sqlalchemy.ext.mypy.plugin",
+]
+ignore_missing_imports = true
+follow_imports = "silent"
+warn_redundant_casts = true
+warn_unused_ignores = false
+check_untyped_defs = true
+no_implicit_reexport = true
+show_error_codes = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+[bandit]
+exclude = "tests"
+skips = "B101, B601"

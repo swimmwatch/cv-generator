@@ -1,0 +1,14 @@
+{% extends "admin/base.html" %}
+{% block message %}
+    {{ _("Selected request:") }} <br>
+    <b>{{ _("First Name:") }}</b> {{ user.first_name }} <br>
+    {% if user.last_name %}
+    <b>{{ _("Last Name:") }}</b> {{ user.last_name }} <br>
+    {% endif %}
+    {% if user.username %}
+    <b>{{ _("Username:") }}</b> {{ mention_html(user.tg_id, user.username) }} <br>
+    {% endif %}
+
+    <br>
+    {{ _("Approve?") }}
+{% endblock %}

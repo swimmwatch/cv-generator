@@ -1,0 +1,290 @@
+# Russian translations for PROJECT.
+# Copyright (C) 2024 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2024.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2025-12-03 23:58+0300\n"
+"PO-Revision-Date: 2024-05-05 14:28+0300\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: ru\n"
+"Language-Team: ru <LL@li.org>\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: src/apps/bot/handlers/admin.py:59
+#, fuzzy
+msgid "Users"
+msgstr "Пользователи"
+
+#: src/apps/bot/handlers/admin.py:64
+#, fuzzy
+msgid "Requests"
+msgstr "Запросы"
+
+#: src/apps/bot/handlers/admin.py:70
+msgid "Sync proxies"
+msgstr "Синк проксей"
+
+#: src/apps/bot/handlers/admin.py:118
+msgid "You have no permission to do that."
+msgstr "У вас нет прав для данной операции."
+
+#: src/apps/bot/handlers/admin.py:199 src/apps/bot/handlers/admin.py:246
+#: src/apps/bot/handlers/admin.py:350 src/apps/bot/handlers/admin.py:408
+#: src/apps/bot/handlers/admin.py:473 src/apps/bot/handlers/admin.py:516
+#: src/apps/bot/handlers/admin.py:583 src/apps/bot/handlers/admin.py:640
+#: src/apps/bot/handlers/admin.py:704
+msgid "Back"
+msgstr "Назад"
+
+#: src/apps/bot/handlers/admin.py:251
+msgid "Ban"
+msgstr "Лишить доступа"
+
+#: src/apps/bot/handlers/admin.py:256
+#, fuzzy
+msgid "Make admin"
+msgstr "Дать права администратора"
+
+#: src/apps/bot/handlers/admin.py:261
+msgid "Remove admin"
+msgstr "Лишить прав администратора"
+
+#: src/apps/bot/handlers/admin.py:433
+#, fuzzy
+msgid "Congratulation! You are now admin."
+msgstr "Поздравляю! Вы теперь администратор."
+
+#: src/apps/bot/handlers/admin.py:635
+#: src/infrastructure/bot/templates/admin/user.html:11
+#: src/infrastructure/bot/templates/admin/user.html:12
+msgid "Yes"
+msgstr "Да"
+
+#: src/apps/bot/handlers/admin.py:729
+msgid "Congratulation! You are now approved."
+msgstr "Поздравляю! Вам дали доступ."
+
+#: src/apps/bot/handlers/admin.py:749
+msgid "Bye! I hope we can talk again some day."
+msgstr "Пока! Надеюсь, когда-нибудь мы сможем поговорить снова."
+
+#: src/apps/bot/handlers/error.py:22
+msgid "Ops! Something went wrong."
+msgstr "Упс! Что-то пошло не так."
+
+#: src/apps/bot/handlers/fallback.py:24
+msgid "Ops! I don't know what I can do."
+msgstr "Упс! Я не знаю, что мне нужно тут сделать."
+
+#: src/apps/bot/handlers/subscription.py:39
+msgid "You are already subscribed to reports."
+msgstr "Вы уже подписаны на уведомления."
+
+#: src/apps/bot/handlers/subscription.py:46
+msgid "You are subscribed to reports."
+msgstr "Вы подписаны на уведомления."
+
+#: src/apps/bot/handlers/subscription.py:77
+msgid "You are already unsubscribed to reports."
+msgstr "Вы уже отписаны от уведомлений."
+
+#: src/apps/bot/handlers/subscription.py:84
+msgid "You are unsubscribed to reports."
+msgstr "Вы отписаны от уведомлений."
+
+#: src/infrastructure/bot/templates/greet.html:1
+#, fuzzy, python-format
+msgid "Hi, %(name)s!"
+msgstr "Привет, @%(name)s!"
+
+#: src/infrastructure/bot/templates/greet.html:2
+msgid "I am "
+msgstr "Меня зовут "
+
+#: src/infrastructure/bot/templates/admin/approved.html:3
+#, fuzzy, python-format
+msgid "User %(name)s was approved."
+msgstr "Пользователь @%(name)s одобрен."
+
+#: src/infrastructure/bot/templates/admin/ban.html:3
+#, fuzzy, python-format
+msgid "User %(name)s was banned."
+msgstr "Пользователь @%(name)s был забанен."
+
+#: src/infrastructure/bot/templates/admin/base.html:3
+msgid "Admin"
+msgstr "Админ"
+
+#: src/infrastructure/bot/templates/admin/base.html:15
+msgid "Or send /cancel to stop talking to me."
+msgstr "Или отправьте /cancel чтобы прекратить общение со мной."
+
+#: src/infrastructure/bot/templates/admin/greet.html:3
+msgid "Select option."
+msgstr "Выберете опцию."
+
+#: src/infrastructure/bot/templates/admin/make_admin.html:3
+#, fuzzy, python-format
+msgid "User %(name)s was upgraded to admin."
+msgstr "Пользователь @%(name)s был повышен до администратора."
+
+#: src/infrastructure/bot/templates/admin/remove_admin.html:3
+#, fuzzy, python-format
+msgid "User %(name)s was removed admin permissions."
+msgstr "Пользователь @%(name)s лишён прав администратора."
+
+#: src/infrastructure/bot/templates/admin/request.html:3
+msgid "Selected request:"
+msgstr "Выбран запрос:"
+
+#: src/infrastructure/bot/templates/admin/request.html:4
+#: src/infrastructure/bot/templates/admin/user.html:4
+msgid "First Name:"
+msgstr "Имя:"
+
+#: src/infrastructure/bot/templates/admin/request.html:6
+#: src/infrastructure/bot/templates/admin/user.html:6
+msgid "Last Name:"
+msgstr "Фамилия:"
+
+#: src/infrastructure/bot/templates/admin/request.html:9
+#: src/infrastructure/bot/templates/admin/user.html:9
+msgid "Username:"
+msgstr "Никнейм:"
+
+#: src/infrastructure/bot/templates/admin/request.html:13
+msgid "Approve?"
+msgstr "Одобрить?"
+
+#: src/infrastructure/bot/templates/admin/requests.html:4
+msgid "Select request."
+msgstr "Выберете запрос."
+
+#: src/infrastructure/bot/templates/admin/requests.html:6
+msgid "No requests."
+msgstr "Нет запросов."
+
+#: src/infrastructure/bot/templates/admin/sync_proxies.html:4
+msgid "Sync proxies has been started."
+msgstr "Синк проксей был успешно запущен."
+
+#: src/infrastructure/bot/templates/admin/sync_proxies.html:6
+msgid "Some proxies could not be synced. Please check the logs for more details."
+msgstr "Некоторые прокси не были синхронизированы. Пожалуйста, проверьте логи для получения дополнительной информации."
+
+#: src/infrastructure/bot/templates/admin/user.html:3
+msgid "Selected user:"
+msgstr "Выбран пользователь:"
+
+#: src/infrastructure/bot/templates/admin/user.html:11
+msgid "Approved:"
+msgstr "Одобрен:"
+
+#: src/infrastructure/bot/templates/admin/user.html:11
+#: src/infrastructure/bot/templates/admin/user.html:12
+msgid "No"
+msgstr "Нет"
+
+#: src/infrastructure/bot/templates/admin/user.html:12
+msgid "Admin:"
+msgstr "Админ:"
+
+#: src/infrastructure/bot/templates/admin/user.html:13
+msgid "Telegram ID:"
+msgstr "Telegram ID:"
+
+#: src/infrastructure/bot/templates/admin/users.html:4
+msgid "Select user."
+msgstr "Выберете пользователя."
+
+#: src/infrastructure/bot/templates/admin/users.html:6
+msgid "No users."
+msgstr "Нет пользователей."
+
+#: src/infrastructure/bot/templates/error/base.html:1
+msgid "Error!"
+msgstr "Ошибка!"
+
+#~ msgid "I am <b>%(name)s</b>."
+#~ msgstr "Меня зовут <b>%(name)s</b>."
+
+#~ msgid "You have no mos.ru account. Apply account using /login command."
+#~ msgstr "У вас нет аккаунта mos.ru. Прикрепите аккаунт используя команду /login."
+
+#~ msgid "Poll %(id)s has begun."
+#~ msgstr "Прохождение опроса %(id)s было запущено."
+
+#~ msgid "Novelty %(id)s has begun."
+#~ msgstr "Прохождение городской новинки %(id)s было запущено."
+
+#~ msgid "All tasks has begun."
+#~ msgstr "Все задачи были запущены."
+
+#~ msgid "All novelties tasks has begun."
+#~ msgstr "Все задачи c городскими новинками были запущены."
+
+#~ msgid "All polls tasks has begun."
+#~ msgstr "Все задачи с голосованиями были запущены."
+
+#~ msgid "Getting daily report..."
+#~ msgstr "Получение ежедневного отчёта..."
+
+#~ msgid "Applied mos.ru account:"
+#~ msgstr "Добавлен mos.ru аккаунт:"
+
+#~ msgid "Login"
+#~ msgstr "Логин"
+
+#~ msgid "Are the entered data correct?"
+#~ msgstr "Введены корректные данные?"
+
+#~ msgid "Enter your login."
+#~ msgstr "Введите ваш логин."
+
+#~ msgid "Enter your password."
+#~ msgstr "Введите ваш пароль."
+
+#~ msgid "Saved your credentials."
+#~ msgstr "Ваши учетные данные сохранены."
+
+#~ msgid "Messages with credential will be deleted."
+#~ msgstr "Сообщения с вашими учётными данными будут удалены."
+
+#~ msgid "Daily report:"
+#~ msgstr "Ежедневный отчёт:"
+
+#~ msgid "Available:"
+#~ msgstr "Доступно:"
+
+#~ msgid "Passed:"
+#~ msgstr "Пройдено:"
+
+#~ msgid "Failed:"
+#~ msgstr "Провалено:"
+
+#~ msgid "Earned points:"
+#~ msgstr "Заработано баллов:"
+
+#~ msgid "Current balance:"
+#~ msgstr "Текущий баланс:"
+
+#~ msgid "Monthly report"
+#~ msgstr "Ежемесячный отчёт"
+
+#~ msgid "Earned points for month:"
+#~ msgstr "Заработанные баллы за месяц:"
+
+#~ msgid "Run report:"
+#~ msgstr "Отчёт по ручному прохождению:"
+
+#~ msgid "Status:"
+#~ msgstr "Статус:"
+

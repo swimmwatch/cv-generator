@@ -1,0 +1,307 @@
+# English translations for PROJECT.
+# Copyright (C) 2024 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2024.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2025-12-03 23:58+0300\n"
+"PO-Revision-Date: 2024-05-05 14:24+0300\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: en\n"
+"Language-Team: en <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: src/apps/bot/handlers/admin.py:59
+msgid "Users"
+msgstr ""
+
+#: src/apps/bot/handlers/admin.py:64
+msgid "Requests"
+msgstr ""
+
+#: src/apps/bot/handlers/admin.py:70
+msgid "Sync proxies"
+msgstr ""
+
+#: src/apps/bot/handlers/admin.py:118
+msgid "You have no permission to do that."
+msgstr ""
+
+#: src/apps/bot/handlers/admin.py:199 src/apps/bot/handlers/admin.py:246
+#: src/apps/bot/handlers/admin.py:350 src/apps/bot/handlers/admin.py:408
+#: src/apps/bot/handlers/admin.py:473 src/apps/bot/handlers/admin.py:516
+#: src/apps/bot/handlers/admin.py:583 src/apps/bot/handlers/admin.py:640
+#: src/apps/bot/handlers/admin.py:704
+msgid "Back"
+msgstr ""
+
+#: src/apps/bot/handlers/admin.py:251
+msgid "Ban"
+msgstr ""
+
+#: src/apps/bot/handlers/admin.py:256
+msgid "Make admin"
+msgstr ""
+
+#: src/apps/bot/handlers/admin.py:261
+msgid "Remove admin"
+msgstr ""
+
+#: src/apps/bot/handlers/admin.py:433
+msgid "Congratulation! You are now admin."
+msgstr ""
+
+#: src/apps/bot/handlers/admin.py:635
+#: src/infrastructure/bot/templates/admin/user.html:11
+#: src/infrastructure/bot/templates/admin/user.html:12
+msgid "Yes"
+msgstr ""
+
+#: src/apps/bot/handlers/admin.py:729
+msgid "Congratulation! You are now approved."
+msgstr ""
+
+#: src/apps/bot/handlers/admin.py:749
+msgid "Bye! I hope we can talk again some day."
+msgstr ""
+
+#: src/apps/bot/handlers/error.py:22
+msgid "Ops! Something went wrong."
+msgstr ""
+
+#: src/apps/bot/handlers/fallback.py:24
+msgid "Ops! I don't know what I can do."
+msgstr ""
+
+#: src/apps/bot/handlers/subscription.py:39
+msgid "You are already subscribed to reports."
+msgstr ""
+
+#: src/apps/bot/handlers/subscription.py:46
+msgid "You are subscribed to reports."
+msgstr ""
+
+#: src/apps/bot/handlers/subscription.py:77
+msgid "You are already unsubscribed to reports."
+msgstr ""
+
+#: src/apps/bot/handlers/subscription.py:84
+msgid "You are unsubscribed to reports."
+msgstr ""
+
+#: src/infrastructure/bot/templates/greet.html:1
+#, python-format
+msgid "Hi, %(name)s!"
+msgstr ""
+
+#: src/infrastructure/bot/templates/greet.html:2
+msgid "I am "
+msgstr ""
+
+#: src/infrastructure/bot/templates/admin/approved.html:3
+#, python-format
+msgid "User %(name)s was approved."
+msgstr ""
+
+#: src/infrastructure/bot/templates/admin/ban.html:3
+#, python-format
+msgid "User %(name)s was banned."
+msgstr ""
+
+#: src/infrastructure/bot/templates/admin/base.html:3
+msgid "Admin"
+msgstr ""
+
+#: src/infrastructure/bot/templates/admin/base.html:15
+msgid "Or send /cancel to stop talking to me."
+msgstr ""
+
+#: src/infrastructure/bot/templates/admin/greet.html:3
+msgid "Select option."
+msgstr ""
+
+#: src/infrastructure/bot/templates/admin/make_admin.html:3
+#, python-format
+msgid "User %(name)s was upgraded to admin."
+msgstr ""
+
+#: src/infrastructure/bot/templates/admin/remove_admin.html:3
+#, python-format
+msgid "User %(name)s was removed admin permissions."
+msgstr ""
+
+#: src/infrastructure/bot/templates/admin/request.html:3
+msgid "Selected request:"
+msgstr ""
+
+#: src/infrastructure/bot/templates/admin/request.html:4
+#: src/infrastructure/bot/templates/admin/user.html:4
+msgid "First Name:"
+msgstr ""
+
+#: src/infrastructure/bot/templates/admin/request.html:6
+#: src/infrastructure/bot/templates/admin/user.html:6
+msgid "Last Name:"
+msgstr ""
+
+#: src/infrastructure/bot/templates/admin/request.html:9
+#: src/infrastructure/bot/templates/admin/user.html:9
+msgid "Username:"
+msgstr ""
+
+#: src/infrastructure/bot/templates/admin/request.html:13
+msgid "Approve?"
+msgstr ""
+
+#: src/infrastructure/bot/templates/admin/requests.html:4
+msgid "Select request."
+msgstr ""
+
+#: src/infrastructure/bot/templates/admin/requests.html:6
+msgid "No requests."
+msgstr ""
+
+#: src/infrastructure/bot/templates/admin/sync_proxies.html:4
+msgid "Sync proxies has been started."
+msgstr ""
+
+#: src/infrastructure/bot/templates/admin/sync_proxies.html:6
+msgid "Some proxies could not be synced. Please check the logs for more details."
+msgstr ""
+
+#: src/infrastructure/bot/templates/admin/user.html:3
+msgid "Selected user:"
+msgstr ""
+
+#: src/infrastructure/bot/templates/admin/user.html:11
+msgid "Approved:"
+msgstr ""
+
+#: src/infrastructure/bot/templates/admin/user.html:11
+#: src/infrastructure/bot/templates/admin/user.html:12
+msgid "No"
+msgstr ""
+
+#: src/infrastructure/bot/templates/admin/user.html:12
+msgid "Admin:"
+msgstr ""
+
+#: src/infrastructure/bot/templates/admin/user.html:13
+msgid "Telegram ID:"
+msgstr ""
+
+#: src/infrastructure/bot/templates/admin/users.html:4
+msgid "Select user."
+msgstr ""
+
+#: src/infrastructure/bot/templates/admin/users.html:6
+msgid "No users."
+msgstr ""
+
+#: src/infrastructure/bot/templates/error/base.html:1
+msgid "Error!"
+msgstr ""
+
+#~ msgid "I am <b>%(name)s</b>."
+#~ msgstr ""
+
+#~ msgid "Poll %s has begun."
+#~ msgstr ""
+
+#~ msgid "Novelty %s has begun."
+#~ msgstr ""
+
+#~ msgid "Hi, @%(name)s!"
+#~ msgstr ""
+
+#~ msgid "User @%(name)s was approved."
+#~ msgstr ""
+
+#~ msgid "User @%(name)s was banned."
+#~ msgstr ""
+
+#~ msgid "User @%(name)s was upgraded to admin."
+#~ msgstr ""
+
+#~ msgid "User @%(name)s was removed admin permissions."
+#~ msgstr ""
+
+#~ msgid "You have no mos.ru account. Apply account using /login command."
+#~ msgstr ""
+
+#~ msgid "Poll %(id)s has begun."
+#~ msgstr ""
+
+#~ msgid "Novelty %(id)s has begun."
+#~ msgstr ""
+
+#~ msgid "All tasks has begun."
+#~ msgstr ""
+
+#~ msgid "All novelties tasks has begun."
+#~ msgstr ""
+
+#~ msgid "All polls tasks has begun."
+#~ msgstr ""
+
+#~ msgid "Getting daily report..."
+#~ msgstr ""
+
+#~ msgid "Applied mos.ru account:"
+#~ msgstr ""
+
+#~ msgid "Login"
+#~ msgstr ""
+
+#~ msgid "Are the entered data correct?"
+#~ msgstr ""
+
+#~ msgid "Enter your login."
+#~ msgstr ""
+
+#~ msgid "Enter your password."
+#~ msgstr ""
+
+#~ msgid "Saved your credentials."
+#~ msgstr ""
+
+#~ msgid "Messages with credential will be deleted."
+#~ msgstr ""
+
+#~ msgid "Daily report:"
+#~ msgstr ""
+
+#~ msgid "Available:"
+#~ msgstr ""
+
+#~ msgid "Passed:"
+#~ msgstr ""
+
+#~ msgid "Failed:"
+#~ msgstr ""
+
+#~ msgid "Earned points:"
+#~ msgstr ""
+
+#~ msgid "Current balance:"
+#~ msgstr ""
+
+#~ msgid "Monthly report"
+#~ msgstr ""
+
+#~ msgid "Earned points for month:"
+#~ msgstr ""
+
+#~ msgid "Run report:"
+#~ msgstr ""
+
+#~ msgid "Status:"
+#~ msgstr ""
+

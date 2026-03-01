@@ -1,0 +1,14 @@
+{% extends "admin/base.html" %}
+{% block message %}
+    {{ _("Selected user:") }} <br>
+    <b>{{ _("First Name:") }}</b> {{ user.first_name }} <br>
+    {% if user.last_name %}
+    <b>{{ _("Last Name:") }}</b> {{ user.last_name }} <br>
+    {% endif %}
+    {% if user.username %}
+    <b>{{ _("Username:") }}</b> {{ mention_html(user.tg_id, user.username) }} <br>
+    {% endif %}
+    <b>{{ _("Approved:") }}</b> {{ _("Yes") if user.approved else _("No") }} <br>
+    <b>{{ _("Admin:") }}</b> {{ _("Yes") if user.admin else _("No") }} <br>
+    <b>{{ _("Telegram ID:") }}</b> <code>{{ user.tg_id }}</code>
+{% endblock %}

@@ -1,0 +1,4 @@
+{% extends "admin/base.html" %}
+{% block message %}
+    {{ _("User %(name)s was banned.") | format(name=mention_html(user.tg_id, user.username)) }}
+{% endblock %}

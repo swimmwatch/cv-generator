@@ -1,0 +1,69 @@
+services:
+  api:
+    image: "${IMAGE_APP}"
+    build:
+      dockerfile: docker/app/Dockerfile
+      context: .
+      args:
+        PYTHON_VERSION: $PYTHON_VERSION
+        UV_VERSION: $UV_VERSION
+    restart: always
+    env_file: .env
+    command: >
+      gunicorn --workers ${API_WORKERS:-1}
+        --worker-class uvicorn.workers.UvicornWorker
+        --bind :${API_PORT:-8000}
+        --worker-tmp-dir ${API_WORKER_TMP_DIR:-/dev/shm}
+        --timeout ${API_TIMEOUT:-60}
+        --graceful-timeout ${API_GRACEFUL_TIMEOUT:-30}
+        --keep-alive ${API_KEEP_ALIVE:-5}
+        --access-logfile -
+        --error-logfile -
+        --forwarded-allow-ips='*' 
+        apps.api.main:app
+    ulimits:
+      nofile:
+        soft: 4096
+        hard: 4096
+    profiles:
+      - "main"
+    ports:
+      - "${API_PUBLIC_PORT}:${API_PORT:-8000}"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "--fail",
+          "http://0.0.0.0:${API_PORT:-8000}/api/health/readiness",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  worker:
+    image: "${IMAGE_APP}"
+    env_file: .env
+    restart: unless-stopped
+    command: taskiq worker apps.worker.app:broker --no-configure-logging --log-level=${LOGGER_LEVEL:-INFO}
+    # TODO: add healthcheck
+    profiles:
+      - "main"
+    ulimits:
+      nofile:
+        soft: 4096
+        hard: 4096
+
+  worker-beat:
+    image: "${IMAGE_APP}"
+    env_file: .env
+    restart: unless-stopped
+    command: taskiq scheduler apps.worker.app:scheduler --no-configure-logging --skip-first-run --log-level=${LOGGER_LEVEL:-INFO}
+    # TODO: add healthcheck
+    profiles:
+      - "main"
+    ulimits:
+      nofile:
+        soft: 4096
+        hard: 4096
