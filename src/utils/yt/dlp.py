@@ -10,7 +10,7 @@ class YtDlpVideoMetadataClient:
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
-            'cookiesfrombrowser': ('chrome',),
+            "cookiesfrombrowser": ("chrome",),
         }
 
     def _fetch_sync(self, video_id: str) -> dict[str, typing.Any] | None:

@@ -1,16 +1,15 @@
-import uuid
-from uuid import UUID
-
 import sqlalchemy as sa
 from sqlalchemy import orm
 from sqlalchemy.ext.hybrid import hybrid_property
 
+from infra.db.base import IdUuidMixin
 from infra.db.base import Model
 from infra.db.base import TimedMixin
 
 
 class User(
     Model,
+    IdUuidMixin,
     TimedMixin,
 ):
     __tablename__ = "users"
@@ -22,11 +21,6 @@ class User(
     MAX_PASSWORD_HASH_LENGTH = 256
     MAX_LANGUAGE_CODE_LENGTH = 16
 
-    id: orm.Mapped[UUID] = orm.mapped_column(
-        sa.UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-    )
     messenger_id: orm.Mapped[str] = orm.mapped_column(
         sa.String(MAX_MESSENGER_ID_LENGTH),
         unique=True,

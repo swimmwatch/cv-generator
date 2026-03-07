@@ -1,3 +1,5 @@
+from pydantic import EmailStr
+
 from core import domains
 from utils.dto import BaseDTO
 from utils.dto import TimedMixinDTO
