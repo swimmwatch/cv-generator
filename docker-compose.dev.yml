@@ -5,8 +5,6 @@ services:
         condition: service_healthy
       cache:
         condition: service_healthy
-      mongo:
-        condition: service_healthy
 
   worker-beat:
     depends_on:
@@ -18,8 +16,6 @@ services:
       cache:
         condition: service_healthy
       db:
-        condition: service_healthy
-      mongo:
         condition: service_healthy
       worker-beat:
         condition: service_started
@@ -74,23 +70,7 @@ services:
       timeout: 5s
       retries: 5
 
-  mongo:
-    image: "mongo:8.0.10"
-    restart: unless-stopped
-    profiles:
-      - "development"
-      - "main"
-    env_file: .env
-    volumes:
-      - mongo_volume:/data/db
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
 volumes:
   db_volume:
   cache_volume:
   minio_volume:
-  mongo_volume:

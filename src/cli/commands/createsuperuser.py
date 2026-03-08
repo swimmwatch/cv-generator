@@ -31,7 +31,11 @@ async def create_superuser(
     password = await click.prompt("Password", hide_input=True)
     password = password.strip()
 
+    messenger_id = await click.prompt("Messenger ID")
+    messenger_id = messenger_id.strip()
+
     data = dto.UserAdminCreateDTO(
+        messenger_id=messenger_id,
         username=username,
         first_name=first_name,
         last_name=last_name,

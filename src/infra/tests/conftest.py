@@ -1,13 +1,11 @@
 import fakeredis
 import pytest
-from mongomock_motor import AsyncMongoMockClient
 from sqlalchemy import orm
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core import dal
 from infra.db.utils.transactions import AsyncSqlAlchemyTransactionManager
 from infra.db.utils.transactions import SqlAlchemyTransactionManager
-from infra.mongo.transactions import AsyncMongoTransactionManager
 from infra.redis.transactions import AsyncRedisTransactionManager
 from infra.redis.transactions import RedisTransactionManager
 from utils.transactions.manager import AsyncTransactionManager
@@ -32,11 +30,6 @@ def redis_transaction_manager(redis_client: fakeredis.FakeRedis) -> RedisTransac
 @pytest.fixture
 def async_redis_transaction_manager(async_redis_client: fakeredis.FakeAsyncRedis) -> AsyncRedisTransactionManager:
     return AsyncRedisTransactionManager(async_redis_client)
-
-
-@pytest.fixture
-def async_mongo_transaction_manager(async_mongo_client: AsyncMongoMockClient) -> AsyncMongoTransactionManager:
-    return AsyncMongoTransactionManager(async_mongo_client)
 
 
 @pytest.fixture

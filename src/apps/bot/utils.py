@@ -8,7 +8,7 @@ async def send_response(
     response: str,
     keyboard: ReplyMarkupUnion | None = None,
 ) -> None:
-    if message.chat is None:
+    if message.chat is None or message.bot is None:
         return
 
     await message.bot.send_message(

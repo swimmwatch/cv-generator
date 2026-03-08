@@ -47,7 +47,7 @@ class StrEnumType(sa.TypeDecorator[EnumT]):
             return None
 
         if isinstance(value, self._enum_cls):
-            return typing.cast(str, value.value)
+            return value.value
 
         if isinstance(value, str):
             # Allow already-serialized values.
@@ -60,7 +60,8 @@ class StrEnumType(sa.TypeDecorator[EnumT]):
             return None
         return self._enum_cls(value)
 
-    def python_type(self) -> type[EnumT]:
+    @property
+    def python_type(self) -> type[EnumT]:  # type: ignore[override]
         return self._enum_cls
 
     def __repr__(self) -> str:  # pragma: no cover

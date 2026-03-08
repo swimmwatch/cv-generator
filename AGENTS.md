@@ -6,3 +6,5 @@
 - Always run `make lint` after completing the task to ensure Python code quality and adherence to coding standards. If there are any linting errors, fix them.
 - Do not use import `from __future__` in Python code.
 - Write class based tests using `pytest` for DALs, Repositories, Services. Use function based tests for functions or simple classes.
+- Do not import modules as part of calling functions or methods; whenever possible, try to always do imports at the beginning of the file.
+- If possible, always try to pass arguments as named, that is, without the name of the argument, the value of the variable is equal. Always try to use named arguments whenever possible.

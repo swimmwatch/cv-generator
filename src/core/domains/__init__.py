@@ -1,13 +1,15 @@
+from .resume import ALLOWED_RESUME_EXTENSIONS
+from .resume import ALLOWED_RESUME_MIME_TYPES
+from .resume import ResumeProcessingStatus
 from .user import MessengerID
 from .user import TelegramUserLike
 from .user import UserID
-from .video import VideoProcessingStatus
-from .video import VideoRejectReasonCode
 
 __all__ = [
     "UserID",
     "MessengerID",
     "TelegramUserLike",
-    "VideoProcessingStatus",
-    "VideoRejectReasonCode",
+    "ResumeProcessingStatus",
+    "ALLOWED_RESUME_EXTENSIONS",
+    "ALLOWED_RESUME_MIME_TYPES",
 ]

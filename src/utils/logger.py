@@ -8,16 +8,17 @@ import structlog
 def setup_logger(
     json_logs: bool = False,
     log_level: str | int = "INFO",
+    db_log_level: str | int = "WARNING",
 ):
-    timestamper = structlog.processors.TimeStamper(fmt="iso")
-
     shared_processors: list[typing.Callable] = [
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
+        structlog.processors.TimeStamper(fmt="iso"),
         structlog.stdlib.PositionalArgumentsFormatter(),
-        timestamper,
         structlog.processors.StackInfoRenderer(),
+        structlog.processors.ExceptionPrettyPrinter(),
+        structlog.processors.UnicodeDecoder(),
     ]
 
     if json_logs:
@@ -91,7 +92,7 @@ def setup_logger(
     logging.getLogger("uvicorn.access").handlers.clear()
     logging.getLogger("uvicorn.access").propagate = False
 
-    logging.getLogger("sqlalchemy.engine").setLevel(log_level)
+    logging.getLogger("sqlalchemy.engine").setLevel(db_log_level)
 
     def handle_exception(exc_type, exc_value, exc_traceback):
         """

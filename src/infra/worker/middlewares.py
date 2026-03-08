@@ -4,6 +4,7 @@ from taskiq import TaskiqMessage
 from taskiq import TaskiqMiddleware
 from taskiq import TaskiqResult
 
+from infra.db.client.async_ import AsyncDatabase
 from infra.db.session_scope import clear_session_scope
 from infra.db.session_scope import set_session_scope
 from infra.di.container import Container
@@ -18,16 +19,15 @@ class DIMiddleware(TaskiqMiddleware):
     def __init__(self, container: Container) -> None:
         super().__init__()
         self._container = container
-        self._db = None
-        self._mongo_db = None
+        self._db: AsyncDatabase | None = None
 
     async def startup(self) -> None:
         self._db = self._container.async_db()
-        self._mongo_db = self._container.async_mongo_db()
         self._container.init_resources()
         self._container.wire(
             modules=[
                 "apps.api.tasks",
+                "apps.bot.tasks",
                 "apps.worker.tasks",
             ],
         )
@@ -35,8 +35,8 @@ class DIMiddleware(TaskiqMiddleware):
     async def shutdown(self) -> None:
         if self._container:
             self._container.unwire()
-            await self._db.stop()
-            await self._mongo_db.stop()
+            if self._db is not None:
+                await self._db.stop()
             self._container.shutdown_resources()
 
             logger.info("Shutdown DI resources.")
@@ -54,6 +54,8 @@ class DIMiddleware(TaskiqMiddleware):
         # Ensure we operate on the correct scoped session, even if the context changed
         set_session_scope(message.task_id)
 
+        if self._db is None:
+            return
         try:
             await self._db.commit_scoped_session()
         finally:
@@ -69,6 +71,8 @@ class DIMiddleware(TaskiqMiddleware):
         # Ensure we operate on the correct scoped session, even if the context changed
         set_session_scope(message.task_id)
 
+        if self._db is None:
+            return
         try:
             await self._db.rollback_scoped_session()
         finally:

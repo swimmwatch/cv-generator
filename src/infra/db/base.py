@@ -3,6 +3,7 @@ Database Model base class.
 """
 
 import enum
+import uuid
 from datetime import datetime
 
 import sqlalchemy as sa
@@ -53,6 +54,18 @@ class TimedMixin:
     @classmethod
     def _is_active_expression(cls) -> sa.ColumnElement[bool]:
         return cls.deleted_at == None  # noqa: E711
+
+
+class IdUuidMixin:
+    """
+    A mixin that adds an id field of type UUID to the model.
+    """
+
+    id: orm.Mapped[uuid.UUID] = orm.mapped_column(
+        sa.UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
 
 
 class BaseModel(Model, TimedMixin):

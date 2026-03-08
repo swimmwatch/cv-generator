@@ -1,7 +1,7 @@
 [project]
-name = "lang-shorts-bot"
+name = "cv-generator-bot"
 version = "1.0.0"
-description = "Language learning shorts bot"
+description = "CV Generator Bot - A Telegram bot that generates CVs based on user input and AI capabilities."
 authors = [
     {name = "Dmitry Vasiliev", email = "contact.vasiliev.dmitry@gmail.com"},
 ]
@@ -21,13 +21,13 @@ dependencies = [
     "gunicorn>=25.1.0",
     "httpx>=0.28.1",
     "langgraph>=1.0.9",
-    "minio>=7.2.20",
-    "motor>=3.7.0",
     "psycopg[binary]>=3.3.3",
     "pwdlib[argon2]>=0.3.0",
     "pydantic>=2.12.5",
     "pydantic-ai>=1.62.0",
     "pydantic-settings>=2.13.1",
+    "pymupdf>=1.25.0",
+    "python-docx>=1.1.0",
     "aiogram>=3.22.0",
     "pytz>=2025.2",
     "redis>=7.2.0",
@@ -41,6 +41,8 @@ dependencies = [
     "telegram-webapp-auth>=3.0.7",
     "uvicorn>=0.41.0",
     "yt-dlp>=2026.2.21",
+    "aioboto3>=7.0.0",
+    "aiofiles>=25.1.0",
 ]
 
 [dependency-groups]
@@ -53,7 +55,6 @@ dev = [
     "flake8-expression-complexity>=0.0.11",
     "flake8-isort>=7.0.0",
     "flake8-pyproject>=1.2.4",
-    "mongomock-motor>=0.0.34",
     "flake8-pytest-style>=2.2.0",
     "flake8-quotes>=3.4.0",
     "flake8-rst-docstrings>=0.4.0",
@@ -73,6 +74,9 @@ dev = [
     "pytest-mock>=3.15.1",
     "pytest-rerunfailures>=16.1",
     "pytest-xdist>=3.8.0",
+    "types-aiobotocore>=3.2.1",
+    "types-aiobotocore-s3>=3.2.1",
+    "types-aiofiles>=25.1.0.20251011",
     "types-pytz>=2025.2.0.20251108",
     "types-redis>=4.6.0.20241004",
 ]

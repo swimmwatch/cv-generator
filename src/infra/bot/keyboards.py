@@ -27,16 +27,16 @@ def get_paginated_list_keyboard(
     items_btn = [
         [
             InlineKeyboardButton(
-                item_title_getter(item),
+                text=item_title_getter(item),
                 callback_data=f"{item_prefix_callback}{str(item_id_getter(item))}",
             )
         ]
         for item in items
     ]
     control_btn = [
-        InlineKeyboardButton("<", callback_data=f"{base_prefix}{prev_page}"),
-        InlineKeyboardButton(f"{current_page}/{total_pages}", callback_data=" "),
-        InlineKeyboardButton(">", callback_data=f"{base_prefix}{next_page}"),
+        InlineKeyboardButton(text="<", callback_data=f"{base_prefix}{prev_page}"),
+        InlineKeyboardButton(text=f"{current_page}/{total_pages}", callback_data=" "),
+        InlineKeyboardButton(text=">", callback_data=f"{base_prefix}{next_page}"),
     ]
 
     # do not add controls buttons if the list is empty

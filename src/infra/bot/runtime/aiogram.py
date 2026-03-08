@@ -33,15 +33,21 @@ class AiogramPoller(PTBRunner):
     async def start(self):
         if self._running:
             return
-        self._polling_task = asyncio.create_task(self._dp.start_polling(self._bot))
+        self._polling_task = asyncio.create_task(
+            self._dp.start_polling(
+                self._bot,
+                handle_signals=False,
+                close_bot_session=False,
+            )
+        )
         self._running = True
         logger.info("Polling bot has started.")
 
     async def stop(self):
         if not self._running:
             return
+        await self._dp.stop_polling()
         if self._polling_task:
-            self._polling_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await self._polling_task
         await self._bot.session.close()
@@ -123,6 +129,7 @@ class AiogramWebhookServer(PTBRunner):
             logger.warning("Cannot start Telegram Bot Webhook due to it's already running")
             return
 
+        await self._dp.emit_startup()
         await self._bot.set_webhook(
             url=self._url + self._path,
             secret_token=self._secret_token,
@@ -136,6 +143,7 @@ class AiogramWebhookServer(PTBRunner):
             return
 
         await self._bot.delete_webhook(drop_pending_updates=False)
+        await self._dp.emit_shutdown()
         await self._bot.session.close()
 
         self._running = False

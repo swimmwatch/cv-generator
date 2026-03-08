@@ -41,6 +41,17 @@ class BaseDTO(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     @classmethod
+    def from_schema(cls, obj: BaseModel, **kwargs) -> typing.Self:
+        """Create a DTO instance from a schema object.
+
+        Args:
+            obj: The source schema object to convert.
+        Returns:
+            An instance of the DTO class populated with data from the schema.
+        """
+        return cls.model_validate(obj, **kwargs)
+
+    @classmethod
     def from_model(
         cls,
         obj: typing.Any,

@@ -1,5 +1,7 @@
 from aiogram import Bot
 from aiogram import Dispatcher
+from aiogram.fsm.storage.base import DefaultKeyBuilder
+from aiogram.fsm.storage.redis import RedisStorage
 
 from infra.bot.middlewares.audit import LoggerMiddleware
 from infra.bot.middlewares.audit import RequestIdMiddleware
@@ -15,8 +17,16 @@ def create_bot(container: Container) -> Bot:
     return Bot(token=config.telegram_bot.token().get_secret_value())
 
 
-def create_dispatcher(container: Container) -> Dispatcher:
-    dp = Dispatcher()
+def create_storage(container: Container) -> RedisStorage:
+    config = container.config
+    return RedisStorage.from_url(
+        config.redis.url(),
+        key_builder=DefaultKeyBuilder(with_bot_id=True, with_destiny=True),
+    )
+
+
+def create_dispatcher(container: Container, storage: RedisStorage) -> Dispatcher:
+    dp = Dispatcher(storage=storage)
 
     db = container.async_db()
 

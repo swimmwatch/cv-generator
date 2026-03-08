@@ -2,12 +2,14 @@ import typing
 from contextlib import asynccontextmanager
 from contextlib import suppress
 
+from aiogram.fsm.storage.redis import RedisStorage
 from fastapi import APIRouter
 from fastapi import FastAPI
 from starlette.types import Lifespan
 
 from apps.bot.app import create_bot
 from apps.bot.app import create_dispatcher
+from apps.bot.app import create_storage
 from infra.api.middlewares import DBSessionMiddleware
 from infra.api.middlewares import LoggingMiddleware
 from infra.api.middlewares import RequestIdMiddleware
@@ -62,7 +64,8 @@ async def lifespan(fastapi_app: FastAPI) -> typing.AsyncGenerator[None, None]:
 
     # DI must be wired before aiogram starts processing updates.
     db = container.async_db()
-    runner = None
+    runner: AiogramPoller | AiogramWebhookServer | None = None
+    storage: RedisStorage | None = None
 
     try:
         container.wire(
@@ -74,7 +77,8 @@ async def lifespan(fastapi_app: FastAPI) -> typing.AsyncGenerator[None, None]:
         logger.info("DI resources was inited.")
 
         bot = create_bot(container)
-        dp = create_dispatcher(container)
+        storage = create_storage(container)
+        dp = create_dispatcher(container, storage)
 
         match config.env():
             case RunLevelEnum.LOCAL | RunLevelEnum.DEVELOPMENT:
@@ -98,6 +102,10 @@ async def lifespan(fastapi_app: FastAPI) -> typing.AsyncGenerator[None, None]:
         if runner is not None:
             with suppress(Exception):
                 await runner.stop()
+
+        with suppress(Exception):
+            if storage is not None:
+                await storage.close()
 
         container.shutdown_resources()  # type: ignore[misc]
         await db.stop()
