@@ -2,6 +2,7 @@
 DI container.
 """
 
+from aiogram import Bot
 from dependency_injector import providers
 from dependency_injector.containers import DeclarativeContainer
 
@@ -13,11 +14,8 @@ from infra.config import Settings
 from infra.db.client import AsyncDatabase
 from infra.db.utils.transactions import AsyncSqlAlchemyTransactionManager
 from infra.logger.utils import get_logger
-from infra.mongo.client import AsyncMongoDatabase
-from infra.mongo.transactions import AsyncMongoTransactionManager
-from infra.youtube.client import YouTubeDataApiV3Client
+from utils.storages.impl.s3 import S3AsyncStorage
 from utils.transactions.manager import AsyncTransactionManager
-from utils.yt.dlp import YtDlpVideoMetadataClient
 
 logger = get_logger(__name__)
 
@@ -30,20 +28,6 @@ class Container(DeclarativeContainer):
         template_dir=config.telegram_bot.template_dir,
         babel_domain=config.telegram_bot.babel_domain,
         babel_locale_dir=config.telegram_bot.babel_locale_dir,
-    )
-
-    # MongoDB
-    async_mongo_db = providers.Singleton(
-        AsyncMongoDatabase,
-        url=config.mongo.url,
-        db_name=config.mongo.db,
-    )
-    async_mongo_transaction_manager = providers.Factory(
-        AsyncMongoTransactionManager,
-        client=providers.Factory(
-            lambda db: db.client,
-            async_mongo_db,
-        ),
     )
 
     # Database
@@ -65,7 +49,6 @@ class Container(DeclarativeContainer):
         AsyncTransactionManager,
         managers=providers.List(
             async_sql_transaction_manager_scoped,
-            async_mongo_transaction_manager,
         ),
     )
 
@@ -74,39 +57,44 @@ class Container(DeclarativeContainer):
         dal.UserAsyncDAL,
         session=scoped_async_session,
     )
-    video_async_dal = providers.Factory(
-        dal.VideoAsyncDAL,
-        session=scoped_async_session,
-    )
 
     # Repositories
     sql_user_repo = providers.Factory(
         repos.SqlAlchemyUserRepository,
         session=scoped_async_session,
     )
-    sql_video_repo = providers.Factory(
-        repos.SqlAlchemyVideoRepository,
-        session=scoped_async_session,
-    )
-    mongo_video_metadata_repo = providers.Factory(
-        repos.MongoVideoMetadataRepository,
-        collection=providers.Factory(
-            lambda db: db.db["video_metadata"],
-            async_mongo_db,
-        ),
-    )
 
-    # External clients
-    youtube_client = providers.Factory(
-        YouTubeDataApiV3Client,
-        api_key=config.youtube.data_api_key,
-    )
-    yt_dlp_metadata_client = providers.Factory(
-        YtDlpVideoMetadataClient,
+    # S3
+    s3_async_storage = providers.Factory(
+        S3AsyncStorage,
+        bucket=config.s3.bucket,
+        endpoint_url=config.s3.url,
+        aws_access_key_id=providers.Callable(
+            lambda secret: secret.get_secret_value(),
+            config.s3.access_key,
+        ),
+        aws_secret_access_key=providers.Callable(
+            lambda secret: secret.get_secret_value(),
+            config.s3.secret_key,
+        ),
     )
 
     # Services
     user_service = providers.Factory(
         services.UserService,
         user_repo=sql_user_repo,
+    )
+
+    resume_service = providers.Factory(
+        services.ResumeService,
+        async_storage=s3_async_storage,
+    )
+
+    # External services
+    tg_bot_client = providers.Factory(
+        Bot,
+        token=providers.Callable(
+            lambda secret: secret.get_secret_value(),
+            config.telegram_bot.token,
+        ),
     )

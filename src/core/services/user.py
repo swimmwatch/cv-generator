@@ -54,12 +54,6 @@ class UserService:
     ):
         messenger_id = str(tg_user.id)
         db_user = await self._user_repo.get_by_messenger_id(messenger_id)
-        if db_user is None:
-            need_create = True
-            logger.info("User was not found. Creating new one...")
-        else:
-            need_create = False
-            logger.info("User was found. Updating...")
 
         new_user_dto = dto.UserCreateDTO(
             messenger_id=messenger_id,
@@ -71,9 +65,13 @@ class UserService:
             is_staff=False,
             language_code=tg_user.language_code,
         )
-        if need_create:
+
+        if db_user is None:
+            logger.info("User was not found. Creating new one...")
             new_user = await self._user_repo.create_one(new_user_dto)
             return new_user, True
+
+        logger.info("User was found. Updating...")
 
         _, changes = compare_changes(
             db_user,

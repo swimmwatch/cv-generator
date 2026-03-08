@@ -59,7 +59,6 @@ async def lifespan(fastapi_app: FastAPI) -> typing.AsyncGenerator[None, None]:
 
     # Init Databases
     db = container.async_db()
-    mongo_db = container.async_mongo_db()
 
     # Init admin interface
     auth_backend = UsernamePasswordAdminAuth(
@@ -88,6 +87,5 @@ async def lifespan(fastapi_app: FastAPI) -> typing.AsyncGenerator[None, None]:
     finally:
         container.shutdown_resources()
         await db.stop()
-        await mongo_db.stop()
 
         logger.info("Shutdown DI resources.")

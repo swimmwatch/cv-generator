@@ -24,7 +24,7 @@ class UpdateOrCreateUserMiddleware(BaseMiddleware):
         transaction_manager: AsyncTransactionManager = Closing[Provide["async_transaction_manager_scoped"]],
         user_service: services.UserService = Closing[Provide["user_service"]],
     ) -> typing.Any:
-        tg_user = event.message.from_user
+        tg_user = event.message.from_user  # type: ignore[attr-defined]
         if tg_user is None:
             logger.info("Cannot obtain tg_user from event. Skipping user update or create.")
             return await handler(event, data)

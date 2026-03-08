@@ -29,7 +29,7 @@ def authorized(
 
             # aiogram: (event, data)
             if user is None and len(args) >= 2 and isinstance(args[1], dict):
-                data = typing.cast(dict, args[1])
+                data = args[1]
                 user = data.get("user")
 
             if not user:

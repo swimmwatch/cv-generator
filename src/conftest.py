@@ -12,8 +12,6 @@ import structlog
 from alembic.command import upgrade
 from alembic.config import Config
 from fastapi import FastAPI
-from mongomock_motor import AsyncMongoMockClient
-from mongomock_motor import AsyncMongoMockDatabase
 from sqlalchemy.ext.asyncio import AsyncEngine
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.asyncio import async_sessionmaker
@@ -161,16 +159,6 @@ def redis_client() -> fakeredis.FakeRedis:
 @pytest.fixture
 def async_redis_client() -> fakeredis.FakeAsyncRedis:
     return fakeredis.FakeAsyncRedis()
-
-
-@pytest.fixture
-def async_mongo_client() -> AsyncMongoMockClient:
-    return AsyncMongoMockClient()
-
-
-@pytest.fixture
-def async_mongo_db(async_mongo_client: AsyncMongoMockClient) -> AsyncMongoMockDatabase:
-    return async_mongo_client["test_db"]
 
 
 @pytest_asyncio.fixture(autouse=True)
