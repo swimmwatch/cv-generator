@@ -5,15 +5,19 @@ DI container.
 from aiogram import Bot
 from dependency_injector import providers
 from dependency_injector.containers import DeclarativeContainer
+from redis.asyncio import Redis as AsyncRedis
 
 from core import dal
 from core import repos
 from core import services
+from infra.agents.job_parser import JobParserAgent
 from infra.bot.template import TelegramTemplate
 from infra.config import Settings
 from infra.db.client import AsyncDatabase
 from infra.db.utils.transactions import AsyncSqlAlchemyTransactionManager
 from infra.logger.utils import get_logger
+from infra.redis.transactions import AsyncRedisTransactionManager
+from infra.weaviate.client import WeaviateClient
 from utils.storages.impl.s3 import S3AsyncStorage
 from utils.transactions.manager import AsyncTransactionManager
 
@@ -28,6 +32,22 @@ class Container(DeclarativeContainer):
         template_dir=config.telegram_bot.template_dir,
         babel_domain=config.telegram_bot.babel_domain,
         babel_locale_dir=config.telegram_bot.babel_locale_dir,
+    )
+
+    # Redis
+    redis_client = providers.Singleton(
+        AsyncRedis,
+        host=config.redis.host,
+        port=config.redis.port,
+        db=config.redis.db,
+    )
+    redis_async_transaction_manager = providers.Factory(
+        AsyncRedisTransactionManager,
+        redis_client=redis_client,
+    )
+    redis_job_state_repo = providers.Factory(
+        repos.RedisJobStateRepository,
+        redis_client=redis_client,
     )
 
     # Database
@@ -57,10 +77,22 @@ class Container(DeclarativeContainer):
         dal.UserAsyncDAL,
         session=scoped_async_session,
     )
+    resume_async_dal = providers.Factory(
+        dal.ResumeAsyncDAL,
+        session=scoped_async_session,
+    )
 
     # Repositories
     sql_user_repo = providers.Factory(
         repos.SqlAlchemyUserRepository,
+        session=scoped_async_session,
+    )
+    sql_resume_repo = providers.Factory(
+        repos.SqlAlchemyResumeRepository,
+        session=scoped_async_session,
+    )
+    sql_job_repo = providers.Factory(
+        repos.SqlAlchemyJobRepository,
         session=scoped_async_session,
     )
 
@@ -79,15 +111,62 @@ class Container(DeclarativeContainer):
         ),
     )
 
+    # Weaviate
+    weaviate_client = providers.Singleton(
+        WeaviateClient,
+        http_host=config.weaviate.http_host,
+        http_port=config.weaviate.http_port,
+        grpc_host=config.weaviate.grpc_host,
+        grpc_port=config.weaviate.grpc_port,
+    )
+    weaviate_async_client = providers.Factory(
+        lambda wc: wc.client,
+        weaviate_client,
+    )
+
+    # DALs (Weaviate)
+    resume_metadata_dal = providers.Factory(
+        dal.ResumeMetadataDAL,
+        client=weaviate_async_client,
+    )
+    job_metadata_dal = providers.Factory(
+        dal.JobMetadataDAL,
+        client=weaviate_async_client,
+    )
+
     # Services
     user_service = providers.Factory(
         services.UserService,
         user_repo=sql_user_repo,
     )
-
     resume_service = providers.Factory(
         services.ResumeService,
         async_storage=s3_async_storage,
+        resume_metadata_dal=resume_metadata_dal,
+        resume_repo=sql_resume_repo,
+    )
+    job_service = providers.Factory(
+        services.JobService,
+        job_metadata_dal=job_metadata_dal,
+        job_repo=sql_job_repo,
+    )
+
+    # Agents
+    mcp_proxy_headers = providers.Dict(
+        Authorization=providers.Callable(
+            lambda secret: f"Bearer {secret.get_secret_value()}",
+            config.agents.mcp_proxy_auth_token,
+        ),
+    )
+    job_parser_agent = providers.Factory(
+        JobParserAgent,
+        model_name=config.agents.model_name,
+        model_token=providers.Callable(
+            lambda secret: secret.get_secret_value(),
+            config.agents.model_token,
+        ),
+        mcp_proxy_url=config.agents.mcp_proxy_url,
+        mcp_headers=mcp_proxy_headers,
     )
 
     # External services

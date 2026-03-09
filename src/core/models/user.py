@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 import sqlalchemy as sa
 from sqlalchemy import orm
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -5,6 +7,10 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from infra.db.base import IdUuidMixin
 from infra.db.base import Model
 from infra.db.base import TimedMixin
+
+if TYPE_CHECKING:
+    from .job import Job
+    from .resume import Resume
 
 
 class User(
@@ -62,6 +68,19 @@ class User(
     language_code: orm.Mapped[str | None] = orm.mapped_column(
         sa.String(MAX_LANGUAGE_CODE_LENGTH),
         nullable=True,
+    )
+
+    resumes: orm.Mapped[list["Resume"]] = orm.relationship(
+        "Resume",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="noload",
+    )
+    jobs: orm.Mapped[list["Job"]] = orm.relationship(
+        "Job",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="noload",
     )
 
     @hybrid_property

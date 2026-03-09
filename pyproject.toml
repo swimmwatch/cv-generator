@@ -43,6 +43,8 @@ dependencies = [
     "yt-dlp>=2026.2.21",
     "aioboto3>=7.0.0",
     "aiofiles>=25.1.0",
+    "weaviate-client>=4.20.3",
+    "logfire>=4.25.0",
 ]
 
 [dependency-groups]

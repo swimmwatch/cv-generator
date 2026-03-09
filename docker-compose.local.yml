@@ -11,3 +11,12 @@ services:
     ports:
       - "${MINIO_PUBLIC_PORT}:9000"
       - "${MINIO_PUBLIC_UI_PORT}:9090"
+
+  mcp-proxy:
+    ports:
+      - "${MCP_PROXY_PUBLIC_PORT:-9090}:9090"
+
+  weaviate:
+    ports:
+      - "${WEAVIATE_PUBLIC_HTTP_PORT:-8081}:8080"
+      - "${WEAVIATE_PUBLIC_GRPC_PORT:-50051}:50051"

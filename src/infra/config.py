@@ -1,12 +1,15 @@
 from pydantic_settings import BaseSettings
 
 from infra.admin.config import AdminSettings
+from infra.agents.config import AgentsSettings
 from infra.api.config import ApiSettings
 from infra.bot.config import TelegramBotSettings
 from infra.db.config import DatabaseSettings
+from infra.logfire.config import LogfireSettings
 from infra.logger.config import LoggerSettings
 from infra.redis.config import RedisSettings
 from infra.s3.config import S3Settings
+from infra.weaviate.config import WeaviateSettings
 from infra.worker.config import WorkerSettings
 from utils.config import RunLevelBaseConfigMixin
 from utils.config import SettingsConfig
@@ -24,8 +27,11 @@ class Settings(
     db: DatabaseSettings = DatabaseSettings()
     redis: RedisSettings = RedisSettings()
     s3: S3Settings = S3Settings()
+    weaviate: WeaviateSettings = WeaviateSettings()
     logger: LoggerSettings = LoggerSettings()
     api: ApiSettings = ApiSettings()
     telegram_bot: TelegramBotSettings = TelegramBotSettings()
     admin: AdminSettings = AdminSettings()
     worker: WorkerSettings = WorkerSettings()
+    agents: AgentsSettings = AgentsSettings()
+    logfire: LogfireSettings = LogfireSettings()

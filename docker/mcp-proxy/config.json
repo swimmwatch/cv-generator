@@ -1,0 +1,48 @@
+{
+  "mcpProxy": {
+    "baseURL": "${MCP_PROXY_BASE_URL}",
+    "addr": ":9090",
+    "name": "MCP Proxy",
+    "version": "1.0.0",
+    "type": "streamable-http",
+    "options": {
+      "panicIfInvalid": false,
+      "logEnabled": true,
+      "authTokens": ["${MCP_PROXY_AUTH_TOKEN}"]
+    }
+  },
+  "mcpServers": {
+    "firecrawl": {
+      "command": "npx",
+      "args": ["-y", "firecrawl-mcp"],
+      "env": {
+        "FIRECRAWL_API_KEY": "${FIRECRAWL_API_KEY}"
+      }
+    },
+    "playwright": {
+      "command": "node",
+      "args": [
+        "/app/cli.js",
+        "--config", "/config/playwright/config.json",
+        "--init-script", "/config/playwright/init-script.js",
+        "--browser", "chromium",
+        "--headless",
+        "--block-service-workers"
+      ],
+      "options": {
+        "toolFilter": {
+          "mode": "allow",
+          "list": [
+            "browser_navigate",
+            "browser_wait_for",
+            "browser_snapshot",
+            "browser_click",
+            "browser_evaluate",
+            "browser_tabs",
+            "browser_close"
+          ]
+        }
+      }
+    }
+  }
+}

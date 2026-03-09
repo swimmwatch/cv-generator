@@ -5,16 +5,15 @@ from aiogram.types import Message
 from dependency_injector.wiring import Provide
 from dependency_injector.wiring import inject
 
+from core import domains
 from core import dto
-from core.domains.resume import ALLOWED_RESUME_EXTENSIONS
-from core.domains.resume import ALLOWED_RESUME_MIME_TYPES
-from core.services.resume import ResumeService
+from core import services
 from infra.bot.template import TelegramTemplate
 from utils.lang import _
 
-from .states import ResumeUploadStates
-from .tasks import process_resume
-from .utils import send_response
+from ..states import ResumeUploadStates
+from ..tasks import process_resume
+from ..utils import send_response
 
 router = Router(name=__name__)
 
@@ -49,7 +48,7 @@ async def handle_resume_upload(
     state: FSMContext,
     user: dto.UserOutDTO,
     telegram_template: TelegramTemplate = Provide["telegram_template"],
-    resume_service: ResumeService = Provide["resume_service"],
+    resume_service: services.ResumeService = Provide["resume_service"],
 ) -> None:
     tg_user = message.from_user
     lang = getattr(tg_user, "language_code", None) if tg_user else None
@@ -67,9 +66,9 @@ async def handle_resume_upload(
     if "." in file_name:
         file_ext = "." + file_name.rsplit(".", 1)[-1].lower()
 
-    if mime_type not in ALLOWED_RESUME_MIME_TYPES and file_ext not in ALLOWED_RESUME_EXTENSIONS:
-        formats = ", ".join(ALLOWED_RESUME_EXTENSIONS)
-        text = _("Invalid file format. Please upload your resume in one of " "the following formats: %s") % formats
+    if mime_type not in domains.ALLOWED_RESUME_MIME_TYPES and file_ext not in domains.ALLOWED_RESUME_EXTENSIONS:
+        formats = ", ".join(domains.ALLOWED_RESUME_EXTENSIONS)
+        text = _("Invalid file format. Please upload your resume in one of the following formats: %s") % formats
         text = telegram_template.render_error(text, lang)
         await send_response(message, text)
         return
@@ -89,6 +88,12 @@ async def handle_resume_upload(
         content_type=mime_type or "application/octet-stream",
     )
 
+    resume_record = await resume_service.create_record(
+        user_id=user.id,
+        object_name=object_name,
+        file_name=file_name,
+    )
+
     await state.clear()
 
     processing_text = telegram_template.render("resume/processing.html", lang)
@@ -96,21 +101,7 @@ async def handle_resume_upload(
 
     await process_resume.kiq(
         user_id=str(user.id),
+        resume_id=str(resume_record.id),
         object_name=object_name,
         file_name=file_name,
     )
-
-
-@router.message()
-@inject
-async def fallback(
-    message: Message,
-    telegram_template: TelegramTemplate = Provide["telegram_template"],
-) -> None:
-    user = message.from_user
-    lang = getattr(user, "language_code", None) if user else None
-
-    text = _("Ops! I don't know what I can do.")
-    text = telegram_template.render_error(text, lang)
-
-    await send_response(message, text)
