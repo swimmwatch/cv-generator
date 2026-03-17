@@ -14,6 +14,7 @@ class RedisSettings(BaseSettings):
     host: str = "localhost"
     port: int = 6379
     db: int = 0
+    checkpoint_url: str = "redis://localhost:6379/0"
 
     @computed_field  # type: ignore[prop-decorator]
     @property

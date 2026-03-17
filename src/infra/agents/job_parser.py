@@ -1,10 +1,15 @@
+from http import HTTPStatus
 from typing import Any
 
+import httpx
 import logfire
+from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END
 from langgraph.graph import START
 from langgraph.graph import StateGraph
 from pydantic_ai import Agent
+from pydantic_ai.exceptions import ModelHTTPError
+from pydantic_ai.exceptions import UnexpectedModelBehavior
 from pydantic_ai.mcp import MCPServerStreamableHTTP
 from pydantic_ai.models import KnownModelName
 from pydantic_ai.models import Model
@@ -53,6 +58,7 @@ class JobParserAgent(BaseAgent[AgentState, JobParserResult]):
         mcp_proxy_url: str,
         mcp_headers: dict[str, str],
         max_retries: int = 3,
+        checkpointer: BaseCheckpointSaver | None = None,
     ) -> None:
         self._mcp_proxy_url = mcp_proxy_url
         self._max_retries = max_retries
@@ -61,7 +67,7 @@ class JobParserAgent(BaseAgent[AgentState, JobParserResult]):
             model_name,
             provider=OpenAIProvider(api_key=model_token),
         )
-        super().__init__(model, model_token)
+        super().__init__(model, model_token, checkpointer=checkpointer)
 
     def _build_agent(self, model: Model | KnownModelName, model_token: str) -> Agent[Any, Any]:
         playwright = MCPServerStreamableHTTP(
@@ -90,6 +96,28 @@ class JobParserAgent(BaseAgent[AgentState, JobParserResult]):
                         f"Parse this job posting and extract structured information:\n\n{state['job_reference']}",
                     )
                     job_card = run_result.output
+                except (httpx.ConnectError, httpx.TimeoutException) as exc:
+                    logfire.error("job_parser.parse MCP connection failed", error=str(exc))
+                    return {
+                        "parsed_result": None,
+                        "error": f"MCP server connection failed: {exc}",
+                    }
+                except ModelHTTPError as exc:
+                    if exc.status_code == HTTPStatus.TOO_MANY_REQUESTS:
+                        logfire.warn("job_parser.parse rate limited", error=str(exc))
+                        if retry < self._max_retries:
+                            return {"retries": retry + 1, "parsed_result": None, "error": str(exc)}
+                    logfire.error(
+                        "job_parser.parse model HTTP error",
+                        status_code=exc.status_code,
+                        error=str(exc),
+                    )
+                    return {"parsed_result": None, "error": f"Model API error (HTTP {exc.status_code}): {exc}"}
+                except UnexpectedModelBehavior as exc:
+                    logfire.warn("job_parser.parse unexpected model behavior", error=str(exc))
+                    if retry < self._max_retries:
+                        return {"retries": retry + 1, "parsed_result": None, "error": str(exc)}
+                    return {"parsed_result": None, "error": f"Unexpected model behavior: {exc}"}
                 except Exception as exc:
                     if retry < self._max_retries:
                         logfire.warn(
@@ -143,4 +171,7 @@ class JobParserAgent(BaseAgent[AgentState, JobParserResult]):
     def _parse_result(self, state: dict[str, Any]) -> JobParserResult:
         if state.get("parsed_result"):
             return JobParserResult(success=True, result=state["parsed_result"])
+        return self._build_error_result()
+
+    def _build_error_result(self) -> JobParserResult:
         return JobParserResult(success=False, result=None)

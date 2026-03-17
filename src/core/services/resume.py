@@ -85,3 +85,15 @@ class ResumeService:
         await self._resume_metadata_dal.delete_by_resume_id(str(resume_id))
         await self._resume_metadata_dal.insert_chunks(chunks)
         return chunks
+
+    async def search_by_text(
+        self,
+        query: str,
+        resume_id: uuid.UUID,
+        limit: int = 10,
+    ) -> list[str]:
+        return await self._resume_metadata_dal.search_by_text(
+            query=query,
+            resume_id=str(resume_id),
+            limit=limit,
+        )

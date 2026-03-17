@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-03-08 19:21+0300\n"
+"POT-Creation-Date: 2026-03-16 21:27+0300\n"
 "PO-Revision-Date: 2024-05-05 14:24+0300\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: en\n"
@@ -18,17 +18,68 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: src/apps/bot/handlers.py:59
+#: src/apps/bot/handlers/cv.py:75 src/apps/bot/handlers/job.py:150
+msgid "You haven't uploaded any resumes yet. Use /start to upload one."
+msgstr ""
+
+#: src/apps/bot/handlers/cv.py:101
+#, python-format
+msgid "Your resumes (page %d of %d):"
+msgstr ""
+
+#: src/apps/bot/handlers/fallback.py:23
+msgid "Ops! I don't know what I can do."
+msgstr ""
+
+#: src/apps/bot/handlers/job.py:53
+msgid "You already have a job parsing in progress. Please wait for it to finish."
+msgstr ""
+
+#: src/apps/bot/handlers/job.py:61
+msgid "You don't have any processed resumes yet. Please upload a resume first using /start."
+msgstr ""
+
+#: src/apps/bot/handlers/job.py:92
+msgid "Please send a link to the job posting."
+msgstr ""
+
+#: src/apps/bot/handlers/job.py:106
+msgid "Please send a valid link starting with http:// or https://"
+msgstr ""
+
+#: src/apps/bot/handlers/job.py:110
+msgid "The link is not available. Please check the URL and try again."
+msgstr ""
+
+#: src/apps/bot/handlers/job.py:117
+msgid "Something went wrong. Please try /job again."
+msgstr ""
+
+#: src/apps/bot/handlers/job.py:122
+msgid "Parsing the vacancy. Please wait..."
+msgstr ""
+
+#: src/apps/bot/handlers/job.py:176
+#, python-format
+msgid "Select a resume for job matching (page %d of %d):"
+msgstr ""
+
+#: src/apps/bot/handlers/jobs.py:75
+msgid "You don't have any saved vacancies yet. Use /job to parse one."
+msgstr ""
+
+#: src/apps/bot/handlers/jobs.py:100
+#, python-format
+msgid "Your vacancies (page %d of %d):"
+msgstr ""
+
+#: src/apps/bot/handlers/start.py:58
 msgid "Please upload a file in PDF or DOCX format."
 msgstr ""
 
-#: src/apps/bot/handlers.py:72
+#: src/apps/bot/handlers/start.py:71
 #, python-format
 msgid "Invalid file format. Please upload your resume in one of the following formats: %s"
-msgstr ""
-
-#: src/apps/bot/handlers.py:113
-msgid "Ops! I don't know what I can do."
 msgstr ""
 
 #: src/infra/bot/templates/greet.html:1
@@ -148,16 +199,59 @@ msgstr ""
 msgid "No users."
 msgstr ""
 
+#: src/infra/bot/templates/cv/index.html:15
+msgid "E-mail:"
+msgstr ""
+
+#: src/infra/bot/templates/cv/index.html:18
+msgid "Phone:"
+msgstr ""
+
+#: src/infra/bot/templates/cv/index.html:21
+msgid "Telegram:"
+msgstr ""
+
+#: src/infra/bot/templates/cv/index.html:31
+msgid "About Me"
+msgstr ""
+
+#: src/infra/bot/templates/cv/index.html:40
+msgid "Skills"
+msgstr ""
+
+#: src/infra/bot/templates/cv/index.html:55
+msgid "Work Experience"
+msgstr ""
+
+#: src/infra/bot/templates/cv/index.html:59
+msgid "at"
+msgstr ""
+
+#: src/infra/bot/templates/cv/index.html:80
+#: src/infra/bot/templates/cv/index.html:82
+#: src/infra/bot/templates/cv/index.html:101
+#: src/infra/bot/templates/cv/index.html:103
+msgid "Stack:"
+msgstr ""
+
+#: src/infra/bot/templates/cv/index.html:90
+msgid "Experience before professional development:"
+msgstr ""
+
+#: src/infra/bot/templates/cv/index.html:117
+msgid "Education"
+msgstr ""
+
 #: src/infra/bot/templates/error/base.html:1
 msgid "Error!"
 msgstr ""
 
 #: src/infra/bot/templates/resume/done.html:1
-msgid "Your resume has been successfully processed!"
+msgid "Your resume has been successfully processed and saved!"
 msgstr ""
 
 #: src/infra/bot/templates/resume/done.html:4
-msgid "Extracted text:"
+msgid "You can now use the /job command to match your resume against job listings."
 msgstr ""
 
 #: src/infra/bot/templates/resume/failed.html:3
@@ -328,5 +422,11 @@ msgstr ""
 #~ msgstr ""
 
 #~ msgid "I am "
+#~ msgstr ""
+
+#~ msgid "Your resume has been successfully processed!"
+#~ msgstr ""
+
+#~ msgid "Extracted text:"
 #~ msgstr ""
 

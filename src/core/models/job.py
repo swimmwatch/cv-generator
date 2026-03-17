@@ -9,7 +9,6 @@ from infra.db.base import Model
 from infra.db.base import TimedMixin
 
 if TYPE_CHECKING:
-    from .resume import Resume
     from .user import User
 
 
@@ -25,12 +24,6 @@ class Job(Model, IdUuidMixin, TimedMixin):
         nullable=False,
         index=True,
     )
-    resume_id: orm.Mapped[uuid.UUID] = orm.mapped_column(
-        sa.UUID(as_uuid=True),
-        sa.ForeignKey("resumes.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
     title: orm.Mapped[str] = orm.mapped_column(sa.String(MAX_TITLE_LENGTH), nullable=False)
     url: orm.Mapped[str] = orm.mapped_column(sa.String(MAX_URL_LENGTH), nullable=False)
     metadata_: orm.Mapped[dict] = orm.mapped_column(
@@ -42,11 +35,6 @@ class Job(Model, IdUuidMixin, TimedMixin):
 
     user: orm.Mapped["User"] = orm.relationship(
         "User",
-        back_populates="jobs",
-        lazy="noload",
-    )
-    resume: orm.Mapped["Resume"] = orm.relationship(
-        "Resume",
         back_populates="jobs",
         lazy="noload",
     )

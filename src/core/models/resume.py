@@ -11,7 +11,6 @@ from infra.db.base import TimedMixin
 from infra.db.utils.fields import StrEnumType
 
 if TYPE_CHECKING:
-    from .job import Job
     from .user import User
 
 
@@ -40,11 +39,5 @@ class Resume(Model, IdUuidMixin, TimedMixin):
     user: orm.Mapped["User"] = orm.relationship(
         "User",
         back_populates="resumes",
-        lazy="noload",
-    )
-    jobs: orm.Mapped[list["Job"]] = orm.relationship(
-        "Job",
-        back_populates="resume",
-        cascade="all, delete-orphan",
         lazy="noload",
     )

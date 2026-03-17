@@ -23,7 +23,6 @@ class JobMetadataDAL(BaseWeaviateAsyncDAL):
     _PROPERTIES = [
         wvc.Property(name="job_id", data_type=wvc.DataType.TEXT, skip_vectorization=True),
         wvc.Property(name="user_id", data_type=wvc.DataType.TEXT, skip_vectorization=True),
-        wvc.Property(name="resume_id", data_type=wvc.DataType.TEXT, skip_vectorization=True),
         wvc.Property(name="section", data_type=wvc.DataType.TEXT, skip_vectorization=True),
         wvc.Property(name="content", data_type=wvc.DataType.TEXT),
     ]
@@ -61,7 +60,6 @@ class JobMetadataDAL(BaseWeaviateAsyncDAL):
             {
                 "job_id": chunk.job_id,
                 "user_id": chunk.user_id,
-                "resume_id": chunk.resume_id,
                 "section": chunk.section,
                 "content": chunk.content,
             }
@@ -74,3 +72,27 @@ class JobMetadataDAL(BaseWeaviateAsyncDAL):
             raise WeaviateInsertError(msg)
 
         logger.info("Inserted job chunks.", count=len(chunks))
+
+    async def get_full_text_by_job_id(self, job_id: str) -> str | None:
+        collection = self._client.collections.get(self.Meta.collection_name)
+        result = await collection.query.fetch_objects(
+            filters=Filter.by_property("job_id").equal(job_id) & Filter.by_property("section").equal("full_job"),
+            limit=1,
+        )
+        if result.objects:
+            return str(result.objects[0].properties["content"])
+        return None
+
+    async def search_by_text(
+        self,
+        query: str,
+        job_id: str,
+        limit: int = 10,
+    ) -> list[str]:
+        collection = self._client.collections.get(self.Meta.collection_name)
+        result = await collection.query.near_text(
+            query=query,
+            filters=Filter.by_property("job_id").equal(job_id),
+            limit=limit,
+        )
+        return [str(obj.properties["content"]) for obj in result.objects]

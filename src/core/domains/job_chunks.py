@@ -9,7 +9,6 @@ from .user import UserID
 class JobChunk:
     job_id: str
     user_id: str
-    resume_id: str
     section: str
     content: str
     metadata: dict[str, typing.Any]
@@ -18,7 +17,6 @@ class JobChunk:
 def chunk_job(
     job_id: JobID,
     user_id: UserID,
-    resume_id: str,
     job_text: str,
 ) -> list[JobChunk]:
     str_job_id = str(job_id)
@@ -26,7 +24,6 @@ def chunk_job(
     base_metadata = {
         "job_id": str_job_id,
         "user_id": str_user_id,
-        "resume_id": resume_id,
     }
     chunks: list[JobChunk] = []
 
@@ -34,7 +31,6 @@ def chunk_job(
         JobChunk(
             job_id=str_job_id,
             user_id=str_user_id,
-            resume_id=resume_id,
             section="full_job",
             content=job_text,
             metadata=base_metadata,
@@ -48,7 +44,6 @@ def chunk_job(
                 JobChunk(
                     job_id=str_job_id,
                     user_id=str_user_id,
-                    resume_id=resume_id,
                     section=section_name,
                     content=section_text.strip(),
                     metadata={**base_metadata, "section": section_name},

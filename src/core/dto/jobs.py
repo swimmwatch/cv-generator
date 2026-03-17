@@ -8,7 +8,6 @@ from utils.dto import TimedMixinDTO
 
 class JobCreateDTO(BaseDTO):
     user_id: uuid.UUID
-    resume_id: uuid.UUID
     title: str
     url: str
     metadata_: typing.Any = None
@@ -17,7 +16,6 @@ class JobCreateDTO(BaseDTO):
 class JobOutDTO(BaseDTO, TimedMixinDTO):
     id: domains.JobID
     user_id: uuid.UUID
-    resume_id: uuid.UUID
     title: str
     url: str
     metadata_: typing.Any = None

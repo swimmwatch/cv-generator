@@ -17,6 +17,9 @@ class JobService:
         self._job_metadata_dal = job_metadata_dal
         self._job_repo = job_repo
 
+    async def get_by_pk(self, pk: uuid.UUID) -> dto.JobOutDTO | None:
+        return await self._job_repo.get_by_pk(pk)
+
     async def get_user_jobs(
         self,
         user_id: domains.UserID,
@@ -27,7 +30,6 @@ class JobService:
     async def create_record(
         self,
         user_id: domains.UserID,
-        resume_id: uuid.UUID,
         title: str,
         url: str,
         metadata_: typing.Any = None,
@@ -35,7 +37,6 @@ class JobService:
         return await self._job_repo.create_one(
             dto.JobCreateDTO(
                 user_id=user_id,
-                resume_id=resume_id,
                 title=title,
                 url=url,
                 metadata_=metadata_,
@@ -46,15 +47,28 @@ class JobService:
         self,
         job_id: domains.JobID,
         user_id: domains.UserID,
-        resume_id: uuid.UUID,
         job_text: str,
     ) -> list[domains.JobChunk]:
         chunks = domains.chunk_job(
             job_id=job_id,
             user_id=user_id,
-            resume_id=str(resume_id),
             job_text=job_text,
         )
         await self._job_metadata_dal.delete_by_job_id(str(job_id))
         await self._job_metadata_dal.insert_chunks(chunks)
         return chunks
+
+    async def get_full_text(self, job_id: domains.JobID) -> str | None:
+        return await self._job_metadata_dal.get_full_text_by_job_id(str(job_id))
+
+    async def search_by_text(
+        self,
+        query: str,
+        job_id: domains.JobID,
+        limit: int = 10,
+    ) -> list[str]:
+        return await self._job_metadata_dal.search_by_text(
+            query=query,
+            job_id=str(job_id),
+            limit=limit,
+        )

@@ -2,15 +2,20 @@
 DI container.
 """
 
+from collections.abc import AsyncIterator
+
 from aiogram import Bot
 from dependency_injector import providers
 from dependency_injector.containers import DeclarativeContainer
+from langgraph.checkpoint.redis.aio import AsyncRedisSaver
 from redis.asyncio import Redis as AsyncRedis
 
 from core import dal
 from core import repos
 from core import services
+from infra.agents.cv_generator import CvGeneratorAgent
 from infra.agents.job_parser import JobParserAgent
+from infra.agents.renderer import ResumeRenderer
 from infra.bot.template import TelegramTemplate
 from infra.config import Settings
 from infra.db.client import AsyncDatabase
@@ -24,12 +29,23 @@ from utils.transactions.manager import AsyncTransactionManager
 logger = get_logger(__name__)
 
 
+async def init_agent_checkpointer(redis_url: str, ttl: dict) -> AsyncIterator[AsyncRedisSaver]:
+    saver = AsyncRedisSaver(redis_url=redis_url, ttl=ttl)
+    async with saver:
+        yield saver
+
+
 class Container(DeclarativeContainer):
     config = providers.Configuration(pydantic_settings=[Settings()])
 
     telegram_template = providers.Singleton(
         TelegramTemplate,
         template_dir=config.telegram_bot.template_dir,
+        babel_domain=config.telegram_bot.babel_domain,
+        babel_locale_dir=config.telegram_bot.babel_locale_dir,
+    )
+    resume_renderer = providers.Singleton(
+        ResumeRenderer,
         babel_domain=config.telegram_bot.babel_domain,
         babel_locale_dir=config.telegram_bot.babel_locale_dir,
     )
@@ -152,6 +168,11 @@ class Container(DeclarativeContainer):
     )
 
     # Agents
+    agent_checkpointer = providers.Resource(
+        init_agent_checkpointer,
+        redis_url=config.redis.checkpoint_url,
+        ttl=providers.Dict(default_ttl=providers.Object(60)),
+    )
     mcp_proxy_headers = providers.Dict(
         Authorization=providers.Callable(
             lambda secret: f"Bearer {secret.get_secret_value()}",
@@ -167,6 +188,18 @@ class Container(DeclarativeContainer):
         ),
         mcp_proxy_url=config.agents.mcp_proxy_url,
         mcp_headers=mcp_proxy_headers,
+        checkpointer=agent_checkpointer,
+    )
+    cv_generator_agent = providers.Factory(
+        CvGeneratorAgent,
+        model_name=config.agents.model_name,
+        model_token=providers.Callable(
+            lambda secret: secret.get_secret_value(),
+            config.agents.model_token,
+        ),
+        resume_metadata_dal=resume_metadata_dal,
+        job_metadata_dal=job_metadata_dal,
+        checkpointer=agent_checkpointer,
     )
 
     # External services
