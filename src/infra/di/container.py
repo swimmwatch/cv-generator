@@ -29,6 +29,12 @@ from utils.transactions.manager import AsyncTransactionManager
 logger = get_logger(__name__)
 
 
+async def init_tg_bot(token: str) -> AsyncIterator[Bot]:
+    bot = Bot(token=token)
+    yield bot
+    await bot.session.close()
+
+
 async def init_agent_checkpointer(redis_url: str, ttl: dict) -> AsyncIterator[AsyncRedisSaver]:
     redis_client = AsyncRedis.from_url(redis_url)
     saver = AsyncRedisSaver(redis_client=redis_client, ttl=ttl)
@@ -213,8 +219,8 @@ class Container(DeclarativeContainer):
     )
 
     # External services
-    tg_bot_client = providers.Factory(
-        Bot,
+    tg_bot_client = providers.Resource(
+        init_tg_bot,
         token=providers.Callable(
             lambda secret: secret.get_secret_value(),
             config.telegram_bot.token,

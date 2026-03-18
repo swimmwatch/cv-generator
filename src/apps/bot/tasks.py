@@ -4,6 +4,7 @@ from aiogram.exceptions import TelegramForbiddenError
 from aiogram.exceptions import TelegramNetworkError
 from aiogram.exceptions import TelegramRetryAfter
 from aiogram.types import BufferedInputFile
+from dependency_injector.wiring import Closing
 from dependency_injector.wiring import Provide
 from dependency_injector.wiring import inject
 from taskiq import Context
@@ -39,7 +40,7 @@ async def send_tg_bot_message(
     disable_notification: bool = False,
     timeout: int | None = None,
     parse_mode: str | None = "HTML",
-    tg_bot: Bot = Provide["tg_bot_client"],
+    tg_bot: Bot = Closing[Provide["tg_bot_client"]],
 ) -> None:
     try:
         await tg_bot.send_message(
@@ -312,7 +313,7 @@ async def send_cv_document(
     resume_id: str,
     job_id: str,
     resume_renderer: ResumeRenderer = Provide["resume_renderer"],
-    tg_bot: Bot = Provide["tg_bot_client"],
+    tg_bot: Bot = Closing[Provide["tg_bot_client"]],
     generated_cv_service: services.GeneratedCVService = Provide["generated_cv_service"],
     transaction_manager: AsyncTransactionManager = Provide["async_transaction_manager_scoped"],
     context: Context = _taskiq_context,
@@ -352,7 +353,7 @@ async def download_generated_cv(
     object_name: str,
     file_name: str,
     generated_cv_service: services.GeneratedCVService = Provide["generated_cv_service"],
-    tg_bot: Bot = Provide["tg_bot_client"],
+    tg_bot: Bot = Closing[Provide["tg_bot_client"]],
     context: Context = _taskiq_context,
 ) -> None:
     log = logger.bind(tg_id=tg_id, object_name=object_name)

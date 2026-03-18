@@ -8,5 +8,6 @@ def setup_logfire(settings: ConfigurationOption) -> None:
         environment=settings.environment(),
         service_name=settings.service_name(),
         send_to_logfire=settings.send_to_logfire(),
+        console=False,
     )
     logfire.instrument_pydantic_ai()

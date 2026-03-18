@@ -9,7 +9,6 @@ from langgraph.graph import START
 from langgraph.graph import StateGraph
 from pydantic_ai import Agent
 from pydantic_ai.exceptions import ModelHTTPError
-from pydantic_ai.exceptions import UnexpectedModelBehavior
 from pydantic_ai.mcp import MCPServerStreamableHTTP
 from pydantic_ai.models import KnownModelName
 from pydantic_ai.models import Model
@@ -23,30 +22,28 @@ from infra.agents.schemas.job import JobParserResult
 
 _INSTRUCTIONS = """\
 You are a job posting parser.
-If the input is a URL, use playwright to fetch the page content first.
+If the input is a URL, use playwright to fetch the page content.
 
-Process:
+IMPORTANT: browser_navigate already returns a page snapshot. \
+Do NOT call browser_snapshot after a successful navigation. \
+Only use browser_snapshot after clicking an element or waiting for dynamic content.
+
+URL handling:
 1. Open the page with browser_navigate.
-2. If browser_navigate fails with net::ERR_ABORTED or a redirect, \
-try the URL again — some sites redirect to an auth wall on the first attempt. \
-If it still fails, use browser_snapshot to extract whatever content is available.
-3. Wait briefly with browser_wait_for if the page is loading.
-4. If there is an obvious cookie consent banner blocking content, dismiss it.
-5. If the page shows a login/auth wall, try scrolling or look for a "view without signing in" link.
-6. Use browser_snapshot to inspect the rendered page.
-7. Extract only the main content of the page.
+2. If navigation fails (timeout, net::ERR_ABORTED, net::ERR_TIMED_OUT, redirect), \
+retry the URL once. If it still fails, use browser_snapshot to get whatever loaded.
+3. If a cookie banner or login wall blocks content, dismiss it with browser_click, \
+then call browser_snapshot to get the updated page.
 
-Then extract structured information from the job posting text.
-Normalize technology and skill names (e.g. 'Postgres' -> 'PostgreSQL', 'JS' -> 'JavaScript').
-Separate mandatory requirements from nice-to-have ones.
-Remove any HTML artifacts, navigation text, or irrelevant site content from all fields.
-Detect the language of the job posting and set language_code accordingly.
-If a field is not present in the text, omit it or leave it empty.
-Generate a concise summary of the position in 1-3 sentences.
-Populate the 'text' field with the full job posting text, \
-cleaned of site navigation, ads, cookie banners, headers, footers, \
-sidebar content, and any other non-essential elements. \
-Keep only the actual job description as published by the employer.\
+Extraction rules:
+- Normalize technology names (e.g. 'Postgres' -> 'PostgreSQL', 'JS' -> 'JavaScript').
+- Separate mandatory requirements from nice-to-have ones.
+- Remove HTML artifacts, navigation, sidebars, and irrelevant site content.
+- Detect the language and set language_code accordingly.
+- If a field is not present, omit it or leave it empty.
+- Generate a 1-3 sentence summary.
+- Populate 'text' with the full job description, \
+cleaned of navigation, ads, banners, headers, footers, and sidebars.\
 """
 
 
@@ -101,6 +98,7 @@ class JobParserAgent(BaseAgent[AgentState, JobParserResult]):
                     return {
                         "parsed_result": None,
                         "error": f"MCP server connection failed: {exc}",
+                        "retries": self._max_retries,
                     }
                 except ModelHTTPError as exc:
                     if exc.status_code == HTTPStatus.TOO_MANY_REQUESTS:
@@ -112,12 +110,11 @@ class JobParserAgent(BaseAgent[AgentState, JobParserResult]):
                         status_code=exc.status_code,
                         error=str(exc),
                     )
-                    return {"parsed_result": None, "error": f"Model API error (HTTP {exc.status_code}): {exc}"}
-                except UnexpectedModelBehavior as exc:
-                    logfire.warn("job_parser.parse unexpected model behavior", error=str(exc))
-                    if retry < self._max_retries:
-                        return {"retries": retry + 1, "parsed_result": None, "error": str(exc)}
-                    return {"parsed_result": None, "error": f"Unexpected model behavior: {exc}"}
+                    return {
+                        "parsed_result": None,
+                        "error": f"Model API error (HTTP {exc.status_code}): {exc}",
+                        "retries": self._max_retries,
+                    }
                 except Exception as exc:
                     if retry < self._max_retries:
                         logfire.warn(
@@ -126,13 +123,11 @@ class JobParserAgent(BaseAgent[AgentState, JobParserResult]):
                             error=str(exc),
                         )
                         return {"retries": retry + 1, "parsed_result": None, "error": str(exc)}
-                    logfire.error(
-                        "job_parser.parse exhausted retries",
-                        error=str(exc),
-                    )
+                    logfire.error("job_parser.parse exhausted retries", error=str(exc))
                     return {
                         "parsed_result": None,
-                        "error": f"Failed to parse after {self._max_retries} retries: {exc}",
+                        "error": f"Failed after {self._max_retries} retries: {exc}",
+                        "retries": self._max_retries,
                     }
 
                 if not job_card.job_title and not job_card.requirements:
@@ -140,6 +135,7 @@ class JobParserAgent(BaseAgent[AgentState, JobParserResult]):
                     return {
                         "parsed_result": None,
                         "error": "Parsed result missing required fields (job_title or requirements)",
+                        "retries": self._max_retries,
                     }
 
                 logfire.info(
@@ -149,7 +145,7 @@ class JobParserAgent(BaseAgent[AgentState, JobParserResult]):
                 return {"parsed_result": job_card, "error": None}
 
         def should_retry(state: AgentState) -> str:
-            if state.get("error") and not state.get("parsed_result") and 0 < state["retries"] < self._max_retries:
+            if state.get("error") and not state.get("parsed_result") and state["retries"] < self._max_retries:
                 return "parse"
             return END
 

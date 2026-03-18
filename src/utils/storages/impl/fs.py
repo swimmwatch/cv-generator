@@ -1,4 +1,6 @@
+import asyncio
 import hashlib
+import os
 import shutil
 import typing
 from collections import deque
@@ -38,12 +40,12 @@ class FSAsyncStorage(AsyncStorage):
         return folder.rstrip("/") + "/"
 
     @staticmethod
-    def _etag(data: bytes) -> str:
-        return hashlib.md5(data, usedforsecurity=False).hexdigest()
+    def _etag(st: os.stat_result) -> str:
+        return hashlib.md5(f"{st.st_size}-{st.st_mtime_ns}".encode(), usedforsecurity=False).hexdigest()
 
     @staticmethod
-    def _last_modified(path: Path) -> datetime:
-        return datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
+    def _last_modified(st: os.stat_result) -> datetime:
+        return datetime.fromtimestamp(st.st_mtime, tz=timezone.utc)
 
     async def put_bytes(
         self,
@@ -57,7 +59,8 @@ class FSAsyncStorage(AsyncStorage):
         await aiofiles.os.makedirs(path.parent, exist_ok=True)
         async with aiofiles.open(path, "wb") as f:
             await f.write(data)
-        return PutResult(etag=self._etag(data))
+        st = await aiofiles.os.stat(path)
+        return PutResult(etag=self._etag(st))
 
     async def get_bytes(self, key: str) -> bytes:
         path = self._resolve(key)
@@ -85,7 +88,7 @@ class FSAsyncStorage(AsyncStorage):
         if not path.exists():
             return DeleteResult(deleted=False)
         if path.is_dir():
-            shutil.rmtree(path)
+            await asyncio.to_thread(shutil.rmtree, path)
         else:
             await aiofiles.os.remove(path)
         return DeleteResult(deleted=True)
@@ -97,14 +100,12 @@ class FSAsyncStorage(AsyncStorage):
         path = self._resolve(key)
         if not path.is_file():
             raise StorageObjectNotFoundError(f"File not found: {key}")
-        stat = path.stat()
-        async with aiofiles.open(path, "rb") as f:
-            data = await f.read()
+        st = await aiofiles.os.stat(path)
         return ObjectHead(
             key=key,
-            size=stat.st_size,
-            etag=self._etag(data),
-            last_modified=datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc),
+            size=st.st_size,
+            etag=self._etag(st),
+            last_modified=self._last_modified(st),
             content_type=None,
             metadata={},
         )
@@ -115,10 +116,11 @@ class FSAsyncStorage(AsyncStorage):
             raise StorageObjectNotFoundError(f"File not found: {source_key}")
         dst = self._resolve(dest_key)
         await aiofiles.os.makedirs(dst.parent, exist_ok=True)
-        shutil.copy2(str(src), str(dst))
+        await asyncio.to_thread(shutil.copy2, str(src), str(dst))
+        st = await aiofiles.os.stat(dst)
         return CopyResult(
-            etag=self._etag(dst.read_bytes()),
-            last_modified=self._last_modified(dst),
+            etag=self._etag(st),
+            last_modified=self._last_modified(st),
         )
 
     async def create_folder(self, folder: str) -> None:
@@ -148,19 +150,20 @@ class FSAsyncStorage(AsyncStorage):
             dir_path = self._resolve(folder.rstrip("/")) if folder else self._root
             if not dir_path.is_dir():
                 return
-            for child in sorted(dir_path.iterdir()):
+            children = await asyncio.to_thread(lambda: sorted(dir_path.iterdir()))
+            for child in children:
                 if child.is_dir() and include_folders:
                     rel = str(child.relative_to(self._root)) + "/"
                     yield StorageEntry(kind=EntryKind.FOLDER, key=rel)
                 elif child.is_file() and include_files:
                     rel = str(child.relative_to(self._root))
-                    stat = child.stat()
+                    st = child.stat()
                     yield StorageEntry(
                         kind=EntryKind.FILE,
                         key=rel,
-                        size=stat.st_size,
-                        etag=self._etag(child.read_bytes()),
-                        last_modified=datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc),
+                        size=st.st_size,
+                        etag=self._etag(st),
+                        last_modified=self._last_modified(st),
                     )
 
         return _gen()
