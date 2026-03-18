@@ -1,5 +1,5 @@
 services:
-  api:
+  bot:
     depends_on:
       db:
         condition: service_healthy

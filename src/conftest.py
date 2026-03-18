@@ -4,14 +4,12 @@ from pathlib import Path
 from typing import AsyncGenerator
 
 import fakeredis
-import httpx
 import pytest
 import pytest_asyncio
 import sqlalchemy as sa
 import structlog
 from alembic.command import upgrade
 from alembic.config import Config
-from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import AsyncEngine
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.asyncio import async_sessionmaker
@@ -21,11 +19,7 @@ from sqlalchemy_utils import database_exists
 from sqlalchemy_utils import drop_database
 from structlog.testing import LogCapture
 
-from apps.api.server import create_server_app
-from apps.api.server import lifespan as prod_lifespan
-from infra.db.client.test import TestAsyncDatabase
 from infra.db.config import DatabaseSettings
-from infra.di.container import Container
 from infra.logger.utils import get_logger
 from tests.factories.base import BaseSQLAFactory
 from utils.tests.utils import DontCloseAsyncSessionCM
@@ -36,6 +30,10 @@ pytest_plugins = (
     "tests.dal",
     "tests.repos",
     "tests.services",
+    "tests.factories.user",
+    "tests.factories.resume",
+    "tests.factories.job",
+    "tests.factories.generated_cv",
 )
 
 
@@ -166,29 +164,3 @@ async def _wire_polyfactory_to_test_session(async_db_session: AsyncSession):
     BaseSQLAFactory.__async_session__ = lambda: DontCloseAsyncSessionCM(async_db_session)  # type: ignore[assignment]
     yield
     BaseSQLAFactory.__async_session__ = None
-
-
-@pytest_asyncio.fixture
-async def api_app(
-    async_db_engine: AsyncEngine,
-    async_db_session: AsyncSession,
-) -> AsyncGenerator[FastAPI, None]:
-    app = create_server_app(prod_lifespan)
-    container: Container = app.container  # type: ignore[attr-defined]
-
-    test_db = TestAsyncDatabase(
-        async_db_engine,
-        async_db_session,
-    )
-    container.async_db.override(test_db)
-
-    yield app
-
-    container.async_db.reset_override()
-
-
-@pytest_asyncio.fixture()
-async def api_client(api_app: FastAPI) -> AsyncGenerator[httpx.AsyncClient, None]:
-    transport = httpx.ASGITransport(app=api_app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
-        yield ac

@@ -32,7 +32,6 @@ class DIMiddleware(TaskiqMiddleware):
         self._container.init_resources()
         self._container.wire(
             modules=[
-                "apps.api.tasks",
                 "apps.bot.tasks",
                 "apps.worker.tasks",
             ],

@@ -147,7 +147,7 @@ migrate:
 	$(RUNNER) alembic upgrade head
 
 migrate-ci:
-	docker compose $(ENV_CONF) run --rm api alembic upgrade head
+	docker compose $(ENV_CONF) run --rm worker alembic upgrade head
 
 revert-migrate:
 	$(RUNNER) alembic downgrade -1

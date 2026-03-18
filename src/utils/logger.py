@@ -2,6 +2,7 @@ import logging
 import sys
 import typing
 
+import logfire
 import structlog
 
 
@@ -29,6 +30,7 @@ def setup_logger(
     structlog.configure(
         processors=shared_processors
         + [
+            logfire.StructlogProcessor(),
             # Prepare event dict for `ProcessorFormatter`.
             structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
         ],
@@ -70,6 +72,7 @@ def setup_logger(
     for _log in [
         "httpx",
         "httpcore",
+        "openai",
         "requests",
         "urllib3",
         "celery",
