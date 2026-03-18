@@ -1,0 +1,9 @@
+<b>{{ _("Generated CV") }}</b>
+<br>
+{% if job %}
+📋 {{ _("Vacancy") }}: <a href="{{ job.url }}">{{ job.title }}</a>
+{% else %}
+📋 {{ _("Vacancy") }}: {{ _("deleted") }}
+{% endif %}
+📄 {% if resume %}{{ _("Resume") }}: {{ resume.title or resume.file_name }}{% else %}{{ _("Resume") }}: {{ _("deleted") }}{% endif %}
+📅 {{ _("Date") }}: {{ date_str }}

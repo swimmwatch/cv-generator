@@ -9,6 +9,7 @@ from infra.db.base import Model
 from infra.db.base import TimedMixin
 
 if TYPE_CHECKING:
+    from .generated_cv import GeneratedCV
     from .user import User
 
 
@@ -36,5 +37,11 @@ class Job(Model, IdUuidMixin, TimedMixin):
     user: orm.Mapped["User"] = orm.relationship(
         "User",
         back_populates="jobs",
+        lazy="noload",
+    )
+    generated_cvs: orm.Mapped[list["GeneratedCV"]] = orm.relationship(
+        "GeneratedCV",
+        back_populates="job",
+        cascade="all, delete-orphan",
         lazy="noload",
     )

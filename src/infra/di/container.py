@@ -30,7 +30,8 @@ logger = get_logger(__name__)
 
 
 async def init_agent_checkpointer(redis_url: str, ttl: dict) -> AsyncIterator[AsyncRedisSaver]:
-    saver = AsyncRedisSaver(redis_url=redis_url, ttl=ttl)
+    redis_client = AsyncRedis.from_url(redis_url)
+    saver = AsyncRedisSaver(redis_client=redis_client, ttl=ttl)
     async with saver:
         yield saver
 
@@ -111,6 +112,10 @@ class Container(DeclarativeContainer):
         repos.SqlAlchemyJobRepository,
         session=scoped_async_session,
     )
+    sql_generated_cv_repo = providers.Factory(
+        repos.SqlAlchemyGeneratedCVRepository,
+        session=scoped_async_session,
+    )
 
     # S3
     s3_async_storage = providers.Factory(
@@ -165,6 +170,11 @@ class Container(DeclarativeContainer):
         services.JobService,
         job_metadata_dal=job_metadata_dal,
         job_repo=sql_job_repo,
+    )
+    generated_cv_service = providers.Factory(
+        services.GeneratedCVService,
+        async_storage=s3_async_storage,
+        generated_cv_repo=sql_generated_cv_repo,
     )
 
     # Agents

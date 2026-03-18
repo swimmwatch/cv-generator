@@ -51,6 +51,9 @@ class ResumeService:
     async def update_record_title(self, resume_id: uuid.UUID, title: str) -> None:
         await self._resume_repo.update_title(pk=resume_id, title=title)
 
+    async def get_by_pk(self, pk: uuid.UUID) -> dto.ResumeOutDTO | None:
+        return await self._resume_repo.get_by_pk(pk)
+
     async def get_user_resumes(
         self,
         user_id: domains.UserID,

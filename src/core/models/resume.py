@@ -11,6 +11,7 @@ from infra.db.base import TimedMixin
 from infra.db.utils.fields import StrEnumType
 
 if TYPE_CHECKING:
+    from .generated_cv import GeneratedCV
     from .user import User
 
 
@@ -39,5 +40,11 @@ class Resume(Model, IdUuidMixin, TimedMixin):
     user: orm.Mapped["User"] = orm.relationship(
         "User",
         back_populates="resumes",
+        lazy="noload",
+    )
+    generated_cvs: orm.Mapped[list["GeneratedCV"]] = orm.relationship(
+        "GeneratedCV",
+        back_populates="resume",
+        cascade="all, delete-orphan",
         lazy="noload",
     )

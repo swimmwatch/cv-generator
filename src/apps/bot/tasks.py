@@ -20,6 +20,7 @@ from infra.agents.schemas.resume import ResumePayload
 from infra.bot.template import TelegramTemplate
 from infra.logger.utils import get_logger
 from utils.extractors import TextExtractorFactory
+from utils.lang import _
 from utils.storages.impl.base import AsyncStorage
 from utils.transactions.manager import AsyncTransactionManager
 
@@ -192,14 +193,14 @@ async def parse_job(
             result = await job_parser_agent.run(thread_id=thread_id, job_reference=job_url)
         except Exception:
             log.error("Vacancy parsing failed.")
-            await send_tg_bot_message.kiq(tg_id, "Failed to parse the vacancy. Please try again later.")
+            await send_tg_bot_message.kiq(tg_id, _("Failed to parse the vacancy. Please try again later."))
             return
         finally:
             await job_state_repo.clear_active(user_id=domains.UserID(user_id))
 
         if result.result is None:
             log.error("Vacancy parsing returned no result.")
-            await send_tg_bot_message.kiq(tg_id, "Failed to parse the vacancy. Please try again later.")
+            await send_tg_bot_message.kiq(tg_id, _("Failed to parse the vacancy. Please try again later."))
             return
 
         metadata = result.result.model_dump(exclude={"text"})
@@ -251,13 +252,13 @@ async def generate_cv(
     job = await job_service.get_by_pk(domains.JobID(job_id))
     if not job:
         log.error("Job not found.")
-        await send_tg_bot_message.kiq(tg_id, "Failed to generate the CV. Please try again later.")
+        await send_tg_bot_message.kiq(tg_id, _("Failed to generate the CV. Please try again later."))
         return
 
     job_text = await job_service.get_full_text(domains.JobID(job_id))
     if not job_text:
         log.error("Job text not found.")
-        await send_tg_bot_message.kiq(tg_id, "Failed to generate the CV. Please try again later.")
+        await send_tg_bot_message.kiq(tg_id, _("Failed to generate the CV. Please try again later."))
         return
 
     job_title = job.title
@@ -279,12 +280,12 @@ async def generate_cv(
     except Exception:
         log.exception("CV generation failed.", attempt=retries + 1)
         if retries + 1 >= max_retries:
-            await send_tg_bot_message.kiq(tg_id, "Failed to generate the CV. Please try again later.")
+            await send_tg_bot_message.kiq(tg_id, _("Failed to generate the CV. Please try again later."))
         raise
 
     if result.result is None:
         log.error("CV generation returned no result.")
-        await send_tg_bot_message.kiq(tg_id, "Failed to generate the CV. Please try again later.")
+        await send_tg_bot_message.kiq(tg_id, _("Failed to generate the CV. Please try again later."))
         return
 
     log.info("CV generated successfully.")
@@ -294,6 +295,9 @@ async def generate_cv(
         result.result.model_dump_json(),
         user.language_code or "en",
         job_title,
+        user_id,
+        resume_id,
+        job_id,
     )
 
 
@@ -304,8 +308,13 @@ async def send_cv_document(
     payload_json: str,
     locale: str,
     job_title: str,
+    user_id: str,
+    resume_id: str,
+    job_id: str,
     resume_renderer: ResumeRenderer = Provide["resume_renderer"],
     tg_bot: Bot = Provide["tg_bot_client"],
+    generated_cv_service: services.GeneratedCVService = Provide["generated_cv_service"],
+    transaction_manager: AsyncTransactionManager = Provide["async_transaction_manager_scoped"],
     context: Context = _taskiq_context,
 ) -> None:
     log = logger.bind(tg_id=tg_id, job_title=job_title)
@@ -317,10 +326,46 @@ async def send_cv_document(
         payload = ResumePayload.model_validate_json(payload_json)
         pdf_bytes = resume_renderer.render_pdf(payload, locale=locale)
         filename = f"{payload.full_name} — {job_title}.pdf"
-        document = BufferedInputFile(pdf_bytes, filename=filename)
-        await tg_bot.send_document(tg_id, document=document)
+
+        async with transaction_manager:
+            await generated_cv_service.save(
+                user_id=domains.UserID(user_id),
+                resume_id=domains.ResumeID(resume_id),
+                job_id=domains.JobID(job_id),
+                file_name=filename,
+                file_data=pdf_bytes,
+            )
+
+            document = BufferedInputFile(pdf_bytes, filename=filename)
+            await tg_bot.send_document(tg_id, document=document)
     except Exception:
         log.exception("Failed to send CV document.", attempt=retries + 1)
         if retries + 1 >= max_retries:
-            await send_tg_bot_message.kiq(tg_id, "Failed to send the CV document. Please try again later.")
+            await send_tg_bot_message.kiq(tg_id, _("Failed to send the CV document. Please try again later."))
+        raise
+
+
+@broker.task(retry_on_error=True, max_retries=3)
+@inject
+async def download_generated_cv(
+    tg_id: int,
+    object_name: str,
+    file_name: str,
+    generated_cv_service: services.GeneratedCVService = Provide["generated_cv_service"],
+    tg_bot: Bot = Provide["tg_bot_client"],
+    context: Context = _taskiq_context,
+) -> None:
+    log = logger.bind(tg_id=tg_id, object_name=object_name)
+
+    retries = int(context.message.labels.get("_retries", 0))
+    max_retries = int(context.message.labels.get("max_retries", 3))
+
+    try:
+        pdf_bytes = await generated_cv_service.download(object_name)
+        document = BufferedInputFile(pdf_bytes, filename=file_name)
+        await tg_bot.send_document(tg_id, document=document)
+    except Exception:
+        log.exception("Failed to download generated CV.", attempt=retries + 1)
+        if retries + 1 >= max_retries:
+            await send_tg_bot_message.kiq(tg_id, _("Failed to send the CV document. Please try again later."))
         raise
