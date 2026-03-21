@@ -55,6 +55,14 @@ class Container(DeclarativeContainer):
         repos.RedisJobStateRepository,
         redis_client=redis_client,
     )
+    redis_chat_state_repo = providers.Factory(
+        repos.RedisChatStateRepository,
+        redis_client=redis_client,
+    )
+    redis_resume_state_repo = providers.Factory(
+        repos.RedisResumeStateRepository,
+        redis_client=redis_client,
+    )
 
     # Database
     async_db = providers.Singleton(
@@ -103,6 +111,10 @@ class Container(DeclarativeContainer):
     )
     sql_generated_cv_repo = providers.Factory(
         repos.SqlAlchemyGeneratedCVRepository,
+        session=scoped_async_session,
+    )
+    sql_transaction_repo = providers.Factory(
+        repos.SqlAlchemyTransactionRepository,
         session=scoped_async_session,
     )
 
@@ -174,6 +186,11 @@ class Container(DeclarativeContainer):
         services.GeneratedCVService,
         async_storage=s3_async_storage,
         generated_cv_repo=sql_generated_cv_repo,
+    )
+    transaction_service = providers.Factory(
+        services.TransactionService,
+        transaction_repo=sql_transaction_repo,
+        user_repo=sql_user_repo,
     )
 
     # Agents

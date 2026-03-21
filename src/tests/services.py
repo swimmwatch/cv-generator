@@ -49,3 +49,14 @@ def resume_service(
         resume_metadata_repo=resume_metadata_repo,
         resume_repo=sql_resume_repo,
     )
+
+
+@pytest.fixture
+def transaction_service(
+    sql_transaction_repo: repos.SqlAlchemyTransactionRepository,
+    sql_user_repo: repos.SqlAlchemyUserRepository,
+) -> services.TransactionService:
+    return services.TransactionService(
+        transaction_repo=sql_transaction_repo,
+        user_repo=sql_user_repo,
+    )

@@ -7,12 +7,16 @@ from aiogram.types import Message
 from dependency_injector.wiring import Provide
 from dependency_injector.wiring import inject
 
+from core import domains
 from core import dto
+from core import repos
 from core import services
 from infra.bot.template import TelegramTemplate
 from utils.extractors import EXTRACTORS
 from utils.lang import _
 
+from ..filters import HasSufficientCreditsFilter
+from ..filters import NoActiveResumeProcessingFilter
 from ..states import ResumeUploadStates
 from ..tasks import process_resume
 from ..utils import get_lang
@@ -23,7 +27,11 @@ router = Router(name=__name__)
 _ALLOWED_EXTENSIONS = set(EXTRACTORS.keys())
 
 
-@router.message(Command("resume"))
+@router.message(
+    Command("resume"),
+    NoActiveResumeProcessingFilter(),
+    HasSufficientCreditsFilter(domains.CreditAction.RESUME_UPLOAD),
+)
 @inject
 async def resume(
     message: Message,
@@ -37,6 +45,31 @@ async def resume(
     await send_response(message, text)
 
 
+@router.message(Command("resume"), NoActiveResumeProcessingFilter())
+@inject
+async def resume_insufficient_credits(
+    message: Message,
+    user: dto.UserOutDTO,
+    telegram_template: TelegramTemplate = Provide["telegram_template"],
+) -> None:
+    lang = get_lang(message.from_user)
+    text = telegram_template.render(
+        "balance/insufficient.html",
+        lang,
+        cost=int(domains.CreditAction.RESUME_UPLOAD),
+        balance=user.balance,
+    )
+    await send_response(message, text)
+
+
+@router.message(Command("resume"))
+async def resume_already_processing(message: Message) -> None:
+    await send_response(
+        message,
+        _("You already have a resume being processed. Please wait for it to finish."),
+    )
+
+
 @router.message(ResumeUploadStates.waiting_for_file)
 @inject
 async def resume_file_input(
@@ -44,6 +77,8 @@ async def resume_file_input(
     user: dto.UserOutDTO,
     state: FSMContext,
     resume_service: services.ResumeService = Provide["resume_service"],
+    user_service: services.UserService = Provide["user_service"],
+    resume_state_repo: repos.ResumeStateRepository = Provide["redis_resume_state_repo"],
     telegram_template: TelegramTemplate = Provide["telegram_template"],
 ) -> None:
     if not message.document:
@@ -86,6 +121,24 @@ async def resume_file_input(
     )
 
     await state.clear()
+
+    if not user.is_superuser:
+        deducted = await user_service.deduct_credits(
+            user_id=user.id,
+            action=domains.CreditAction.RESUME_UPLOAD,
+        )
+        if not deducted:
+            lang = get_lang(message.from_user)
+            text = telegram_template.render(
+                "balance/insufficient.html",
+                lang,
+                cost=int(domains.CreditAction.RESUME_UPLOAD),
+                balance=user.balance,
+            )
+            await send_response(message, text)
+            return
+
+    await resume_state_repo.set_active(user.id)
 
     lang = get_lang(message.from_user)
     text = telegram_template.render("resume/processing.html", lang)

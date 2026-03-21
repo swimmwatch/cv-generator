@@ -87,6 +87,7 @@ async def process_resume(
     telegram_template: TelegramTemplate = Provide["telegram_template"],
     user_service: services.UserService = Provide["user_service"],
     resume_service: services.ResumeService = Provide["resume_service"],
+    resume_state_repo: repos.ResumeStateRepository = Provide["redis_resume_state_repo"],
     transaction_manager: AsyncTransactionManager = Provide["async_transaction_manager_scoped"],
     context: Context = _taskiq_context,
 ) -> None:
@@ -143,6 +144,7 @@ async def process_resume(
 
             text = telegram_template.render("resume/done.html", None)
             await send_tg_bot_message.kiq(tg_id, text)
+            await resume_state_repo.clear_active(domains.UserID(user_id))
         except Exception:
             log.exception("Resume processing failed.", attempt=retries + 1)
 
@@ -157,6 +159,7 @@ async def process_resume(
             if retries + 1 >= max_retries:
                 text = telegram_template.render("resume/failed.html", None)
                 await send_tg_bot_message.kiq(tg_id, text)
+                await resume_state_repo.clear_active(domains.UserID(user_id))
 
             raise
 

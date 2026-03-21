@@ -87,3 +87,10 @@ class UserService:
         else:
             logger.debug("User data wasn't changed.")
             return db_user, False
+
+    async def deduct_credits(self, user_id: domains.UserID, action: domains.CreditAction) -> bool:
+        result = await self._user_repo.deduct_balance(user_id=user_id, amount=domains.CreditAmount(int(action)))
+        return result is not None
+
+    async def topup_credits(self, user_id: domains.UserID, amount: domains.CreditAmount) -> domains.CreditAmount | None:
+        return await self._user_repo.topup_balance(user_id=user_id, amount=amount)

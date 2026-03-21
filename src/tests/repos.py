@@ -28,3 +28,18 @@ def sql_generated_cv_repo(async_db_session: AsyncSession) -> repos.SqlAlchemyGen
 @pytest.fixture
 def redis_job_state_repo(async_redis_client: fakeredis.FakeAsyncRedis) -> repos.RedisJobStateRepository:
     return repos.RedisJobStateRepository(async_redis_client)
+
+
+@pytest.fixture
+def redis_chat_state_repo(async_redis_client: fakeredis.FakeAsyncRedis) -> repos.RedisChatStateRepository:
+    return repos.RedisChatStateRepository(async_redis_client)
+
+
+@pytest.fixture
+def redis_resume_state_repo(async_redis_client: fakeredis.FakeAsyncRedis) -> repos.RedisResumeStateRepository:
+    return repos.RedisResumeStateRepository(async_redis_client)
+
+
+@pytest.fixture
+def sql_transaction_repo(async_db_session: AsyncSession) -> repos.SqlAlchemyTransactionRepository:
+    return repos.SqlAlchemyTransactionRepository(async_db_session)

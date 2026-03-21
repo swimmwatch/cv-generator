@@ -1,9 +1,11 @@
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
 from sqlalchemy import orm
 from sqlalchemy.ext.hybrid import hybrid_property
 
+from core.domains.credits import DEFAULT_BALANCE
 from infra.db.base import IdUuidMixin
 from infra.db.base import Model
 from infra.db.base import TimedMixin
@@ -12,6 +14,7 @@ if TYPE_CHECKING:
     from .generated_cv import GeneratedCV
     from .job import Job
     from .resume import Resume
+    from .transaction import Transaction
 
 
 class User(
@@ -71,6 +74,13 @@ class User(
         nullable=True,
     )
 
+    balance: orm.Mapped[Decimal] = orm.mapped_column(
+        sa.Numeric(precision=12, scale=2),
+        nullable=False,
+        default=DEFAULT_BALANCE,
+        server_default=str(DEFAULT_BALANCE),
+    )
+
     resumes: orm.Mapped[list["Resume"]] = orm.relationship(
         "Resume",
         back_populates="user",
@@ -85,6 +95,12 @@ class User(
     )
     generated_cvs: orm.Mapped[list["GeneratedCV"]] = orm.relationship(
         "GeneratedCV",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="noload",
+    )
+    transactions: orm.Mapped[list["Transaction"]] = orm.relationship(
+        "Transaction",
         back_populates="user",
         cascade="all, delete-orphan",
         lazy="noload",

@@ -20,3 +20,4 @@ class UserFactory(BaseSQLAFactory[models.User]):
     resumes = Ignore()
     jobs = Ignore()
     generated_cvs = Ignore()
+    transactions = Ignore()

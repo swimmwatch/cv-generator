@@ -1,0 +1,10 @@
+💰 {{ _("Your balance:") }} <b>{{ balance }}</b> {{ _("credits") }}
+<br>
+<br>
+{{ _("Credit costs:") }}
+{% for action_name, cost in costs %}
+<br>
+• {{ action_name }} — <b>{{ cost }}</b> {{ _("cr.") }}
+{% endfor %}
+<br>
+{{ _("Use /topup to add more credits.") }}

@@ -14,12 +14,15 @@ from core import domains
 from core import dto
 from core import services
 from infra.bot.keyboards import get_paginated_list_keyboard
+from infra.bot.template import TelegramTemplate
 from utils.lang import _
 from utils.pagination import PageSizePagination
 
 from ..filters import HasDoneResumeFilter
+from ..filters import HasSufficientCreditsFilter
 from ..states import GenerateStates
 from ..tasks import generate_cv
+from ..utils import get_lang
 from ..utils import send_response
 
 router = Router(name=__name__)
@@ -31,7 +34,11 @@ _GEN_JOB_SELECT_PREFIX = "gen_j_sel_"
 _GEN_PAGE_SIZE = 5
 
 
-@router.message(Command("generate"), HasDoneResumeFilter())
+@router.message(
+    Command("generate"),
+    HasDoneResumeFilter(),
+    HasSufficientCreditsFilter(domains.CreditAction.CV_GENERATION),
+)
 @inject
 async def generate(
     message: Message,
@@ -42,6 +49,23 @@ async def generate(
     await state.clear()
     await state.set_state(GenerateStates.selecting_resume)
     await _show_resume_list(message=message, user=user, page=1, resume_service=resume_service)
+
+
+@router.message(Command("generate"), HasDoneResumeFilter())
+@inject
+async def generate_insufficient_credits(
+    message: Message,
+    user: dto.UserOutDTO,
+    telegram_template: TelegramTemplate = Provide["telegram_template"],
+) -> None:
+    lang = get_lang(message.from_user)
+    text = telegram_template.render(
+        "balance/insufficient.html",
+        lang,
+        cost=int(domains.CreditAction.CV_GENERATION),
+        balance=user.balance,
+    )
+    await send_response(message, text)
 
 
 @router.message(Command("generate"))
@@ -115,10 +139,13 @@ async def generate_job_page(
 
 
 @router.callback_query(GenerateStates.selecting_job, F.data.startswith(_GEN_JOB_SELECT_PREFIX))
+@inject
 async def generate_job_select(
     callback: CallbackQuery,
     user: dto.UserOutDTO,
     state: FSMContext,
+    user_service: services.UserService = Provide["user_service"],
+    telegram_template: TelegramTemplate = Provide["telegram_template"],
 ) -> None:
     job_id = (callback.data or "")[len(_GEN_JOB_SELECT_PREFIX) :]
     await callback.answer()
@@ -130,6 +157,24 @@ async def generate_job_select(
         if isinstance(callback.message, Message):
             await send_response(callback.message, _("Something went wrong. Please try /generate again."))
         return
+
+    if not user.is_superuser:
+        deducted = await user_service.deduct_credits(
+            user_id=user.id,
+            action=domains.CreditAction.CV_GENERATION,
+        )
+        if not deducted:
+            await state.clear()
+            if isinstance(callback.message, Message):
+                lang = get_lang(callback.from_user)
+                text = telegram_template.render(
+                    "balance/insufficient.html",
+                    lang,
+                    cost=int(domains.CreditAction.CV_GENERATION),
+                    balance=user.balance,
+                )
+                await callback.message.edit_text(text)
+            return
 
     await state.clear()
 

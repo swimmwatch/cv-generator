@@ -19,15 +19,20 @@ from pydantic_core import to_jsonable_python
 
 from core import domains
 from core import dto
+from core import repos
 from core import services
 from infra.agents.chat import ChatAgent
 from infra.bot.keyboards import get_paginated_list_keyboard
+from infra.bot.template import TelegramTemplate
 from utils.lang import _
 from utils.pagination import PageSizePagination
 
 from ..filters import HasDoneResumeFilter
 from ..filters import HasJobFilter
+from ..filters import HasSufficientCreditsFilter
+from ..filters import NoPendingChatMessageFilter
 from ..states import ChatStates
+from ..utils import get_lang
 from ..utils import send_response
 
 router = Router(name=__name__)
@@ -198,13 +203,20 @@ async def chat_cancel(message: Message, state: FSMContext) -> None:
     await send_response(message, _("Chat ended."))
 
 
-@router.message(ChatStates.chatting)
+@router.message(
+    ChatStates.chatting,
+    NoPendingChatMessageFilter(),
+    HasSufficientCreditsFilter(domains.CreditAction.CHAT_MESSAGE),
+)
 @inject
 async def chat_message(
     message: Message,
     user: dto.UserOutDTO,
     state: FSMContext,
     chat_agent: ChatAgent = Provide["chat_agent"],
+    chat_state_repo: repos.ChatStateRepository = Provide["redis_chat_state_repo"],
+    user_service: services.UserService = Provide["user_service"],
+    telegram_template: TelegramTemplate = Provide["telegram_template"],
 ) -> None:
     if message.chat is None or message.bot is None:
         return
@@ -232,6 +244,24 @@ async def chat_message(
 
     raw_history = data.get("message_history")
     message_history = ModelMessagesTypeAdapter.validate_python(raw_history) if raw_history else None
+
+    if not user.is_superuser:
+        deducted = await user_service.deduct_credits(
+            user_id=user.id,
+            action=domains.CreditAction.CHAT_MESSAGE,
+        )
+        if not deducted:
+            lang = get_lang(message.from_user)
+            text = telegram_template.render(
+                "balance/insufficient.html",
+                lang,
+                cost=int(domains.CreditAction.CHAT_MESSAGE),
+                balance=user.balance,
+            )
+            await send_response(message, text)
+            return
+
+    await chat_state_repo.set_active(user.id)
 
     reply = await bot.send_message(chat_id=chat_id, text="⏳")
 
@@ -333,6 +363,32 @@ async def chat_message(
     finally:
         typing_active = False
         typing_task.cancel()
+        await chat_state_repo.clear_active(user.id)
+
+
+@router.message(ChatStates.chatting, NoPendingChatMessageFilter())
+@inject
+async def chat_insufficient_credits(
+    message: Message,
+    user: dto.UserOutDTO,
+    telegram_template: TelegramTemplate = Provide["telegram_template"],
+) -> None:
+    lang = get_lang(message.from_user)
+    text = telegram_template.render(
+        "balance/insufficient.html",
+        lang,
+        cost=int(domains.CreditAction.CHAT_MESSAGE),
+        balance=user.balance,
+    )
+    await send_response(message, text)
+
+
+@router.message(ChatStates.chatting)
+async def chat_message_pending(message: Message) -> None:
+    await send_response(
+        message,
+        _("Please wait for the previous response to finish before sending a new message."),
+    )
 
 
 async def _show_resume_list(

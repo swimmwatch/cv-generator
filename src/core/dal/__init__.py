@@ -7,6 +7,7 @@ from .job import JobAsyncDAL
 from .job import JobMetadataDAL
 from .resume import ResumeAsyncDAL
 from .resume import ResumeMetadataDAL
+from .transaction import TransactionAsyncDAL
 from .user import UserAsyncDAL
 
 __all__ = [
@@ -15,5 +16,6 @@ __all__ = [
     "JobMetadataDAL",
     "ResumeAsyncDAL",
     "ResumeMetadataDAL",
+    "TransactionAsyncDAL",
     "UserAsyncDAL",
 ]

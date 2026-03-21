@@ -33,6 +33,7 @@ pytest_plugins = (
     "tests.factories.resume",
     "tests.factories.job",
     "tests.factories.generated_cv",
+    "tests.factories.transaction",
 )
 
 
