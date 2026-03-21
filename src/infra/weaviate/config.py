@@ -10,3 +10,5 @@ class WeaviateSettings(BaseSettings):
     http_port: int = 8080
     grpc_host: str = "localhost"
     grpc_port: int = 50051
+    openai_api_key: str = ""
+    embedding_model: str = "text-embedding-3-small"

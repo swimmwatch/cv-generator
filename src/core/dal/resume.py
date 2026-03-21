@@ -25,7 +25,9 @@ class ResumeMetadataDAL(BaseWeaviateAsyncDAL):
         if not exists:
             await self._client.collections.create(
                 name=self.Meta.collection_name,
-                vector_config=wvc.Configure.Vectors.text2vec_transformers(),
+                vector_config=wvc.Configure.Vectors.text2vec_openai(
+                    model=self._embedding_model,
+                ),
                 properties=[
                     wvc.Property(
                         name="resume_id",

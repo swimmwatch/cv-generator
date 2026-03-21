@@ -15,6 +15,7 @@ class CreditAction(enum.IntEnum):
 
 
 class CreditPack(enum.Enum):
+    STARTER = (10, 10)
     SMALL = (50, 50)
     MEDIUM = (100, 90)
     LARGE = (500, 400)

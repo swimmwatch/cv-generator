@@ -140,6 +140,7 @@ class Container(DeclarativeContainer):
         http_port=config.weaviate.http_port,
         grpc_host=config.weaviate.grpc_host,
         grpc_port=config.weaviate.grpc_port,
+        openai_api_key=config.weaviate.openai_api_key,
     )
     weaviate_async_client = providers.Factory(
         lambda wc: wc.client,
@@ -150,10 +151,12 @@ class Container(DeclarativeContainer):
     resume_metadata_dal = providers.Factory(
         dal.ResumeMetadataDAL,
         client=weaviate_async_client,
+        embedding_model=config.weaviate.embedding_model,
     )
     job_metadata_dal = providers.Factory(
         dal.JobMetadataDAL,
         client=weaviate_async_client,
+        embedding_model=config.weaviate.embedding_model,
     )
 
     # Repositories (Weaviate)

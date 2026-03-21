@@ -12,7 +12,12 @@ class WeaviateClient:
         http_port: int,
         grpc_host: str,
         grpc_port: int,
+        openai_api_key: str = "",
     ) -> None:
+        headers = {}
+        if openai_api_key:
+            headers["X-OpenAI-Api-Key"] = openai_api_key
+
         self._client = weaviate.use_async_with_custom(
             http_host=http_host,
             http_port=http_port,
@@ -20,6 +25,7 @@ class WeaviateClient:
             grpc_host=grpc_host,
             grpc_port=grpc_port,
             grpc_secure=False,
+            headers=headers,
         )
 
     async def connect(self) -> None:

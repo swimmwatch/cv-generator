@@ -32,7 +32,9 @@ class JobMetadataDAL(BaseWeaviateAsyncDAL):
         if not exists:
             await self._client.collections.create(
                 name=self.Meta.collection_name,
-                vector_config=wvc.Configure.Vectors.text2vec_transformers(),
+                vector_config=wvc.Configure.Vectors.text2vec_openai(
+                    model=self._embedding_model,
+                ),
                 properties=self._PROPERTIES,
             )
             logger.info("Weaviate collection created.", collection=self.Meta.collection_name)
