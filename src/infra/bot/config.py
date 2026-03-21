@@ -13,7 +13,7 @@ from utils.config import SettingsConfig
 class TelegramBotSettings(BaseSettings):
     model_config = SettingsConfig(env_prefix="telegram_bot_")
 
-    title: str = "Lang Shorts Bot API"
+    title: str = "CV Generator Bot API"
     description: str = ""
 
     token: SecretStr

@@ -118,12 +118,27 @@ class ResumeMetadataDAL(BaseWeaviateAsyncDAL):
         self,
         query: str,
         resume_id: str,
+        user_id: str,
         limit: int = 10,
     ) -> list[str]:
         collection = self._client.collections.get(self.Meta.collection_name)
         result = await collection.query.near_text(
             query=query,
-            filters=Filter.by_property("resume_id").equal(resume_id),
+            filters=Filter.by_property("resume_id").equal(resume_id) & Filter.by_property("user_id").equal(user_id),
+            limit=limit,
+        )
+        return [str(obj.properties["content"]) for obj in result.objects]
+
+    async def search_by_user(
+        self,
+        query: str,
+        user_id: str,
+        limit: int = 10,
+    ) -> list[str]:
+        collection = self._client.collections.get(self.Meta.collection_name)
+        result = await collection.query.near_text(
+            query=query,
+            filters=Filter.by_property("user_id").equal(user_id),
             limit=limit,
         )
         return [str(obj.properties["content"]) for obj in result.objects]

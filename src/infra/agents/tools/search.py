@@ -1,16 +1,18 @@
+import uuid
 from dataclasses import dataclass
 
 import logfire
 from pydantic_ai import FunctionToolset
 from pydantic_ai import RunContext
 
-from core import dal
+from core import repos
 
 
 @dataclass
 class SearchDeps:
-    resume_metadata_dal: dal.ResumeMetadataDAL
-    job_metadata_dal: dal.JobMetadataDAL
+    resume_metadata_repo: repos.ResumeMetadataRepository
+    job_metadata_repo: repos.JobMetadataRepository
+    user_id: str
     resume_id: str
     job_id: str
 
@@ -35,9 +37,10 @@ async def search_resume_chunks(
         query=query,
         limit=limit,
     ):
-        results = await ctx.deps.resume_metadata_dal.search_by_text(
+        results = await ctx.deps.resume_metadata_repo.search_by_text(
             query=query,
-            resume_id=ctx.deps.resume_id,
+            resume_id=uuid.UUID(ctx.deps.resume_id),
+            user_id=uuid.UUID(ctx.deps.user_id),
             limit=limit,
         )
         logfire.info("search_resume_chunks results", count=len(results))
@@ -61,9 +64,10 @@ async def search_vacancy_chunks(
         query=query,
         limit=limit,
     ):
-        results = await ctx.deps.job_metadata_dal.search_by_text(
+        results = await ctx.deps.job_metadata_repo.search_by_text(
             query=query,
-            job_id=ctx.deps.job_id,
+            job_id=uuid.UUID(ctx.deps.job_id),
+            user_id=uuid.UUID(ctx.deps.user_id),
             limit=limit,
         )
         logfire.info("search_vacancy_chunks results", count=len(results))

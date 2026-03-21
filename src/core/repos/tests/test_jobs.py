@@ -19,6 +19,7 @@ class TestSqlAlchemyJobRepositoryCreateOne:
             user_id=user.id,
             title="Software Engineer",
             url="https://example.com/job/1",
+            normalized_url="example.com/job/1",
         )
         result = await sql_job_repo.create_one(data)
 
@@ -38,6 +39,7 @@ class TestSqlAlchemyJobRepositoryCreateOne:
             user_id=user.id,
             title="Backend Dev",
             url="https://example.com/job/2",
+            normalized_url="example.com/job/2",
             metadata_=metadata,
         )
         result = await sql_job_repo.create_one(data)
@@ -54,6 +56,7 @@ class TestSqlAlchemyJobRepositoryCreateOne:
             user_id=user.id,
             title="DevOps",
             url="https://example.com/job/3",
+            normalized_url="example.com/job/3",
         )
         result = await sql_job_repo.create_one(data)
 
@@ -177,3 +180,120 @@ class TestSqlAlchemyJobRepositoryGetByUserId:
 
         assert total == 1
         assert items == []
+
+
+class TestSqlAlchemyJobRepositoryHasJobs:
+    async def test_returns_true_when_jobs_exist(
+        self,
+        sql_job_repo: repos.SqlAlchemyJobRepository,
+        user_factory: UserFactory,
+        job_factory: JobFactory,
+    ) -> None:
+        user: models.User = await user_factory.create_async()
+        await job_factory.create_async(user_id=user.id)
+
+        assert await sql_job_repo.has_jobs(user.id) is True
+
+    async def test_returns_true_when_multiple_jobs_exist(
+        self,
+        sql_job_repo: repos.SqlAlchemyJobRepository,
+        user_factory: UserFactory,
+        job_factory: JobFactory,
+    ) -> None:
+        user: models.User = await user_factory.create_async()
+        await job_factory.create_async(user_id=user.id)
+        await job_factory.create_async(user_id=user.id)
+
+        assert await sql_job_repo.has_jobs(user.id) is True
+
+    async def test_returns_false_when_no_jobs(
+        self,
+        sql_job_repo: repos.SqlAlchemyJobRepository,
+    ) -> None:
+        assert await sql_job_repo.has_jobs(uuid.uuid4()) is False
+
+    async def test_returns_false_when_only_other_user_has_jobs(
+        self,
+        sql_job_repo: repos.SqlAlchemyJobRepository,
+        user_factory: UserFactory,
+        job_factory: JobFactory,
+    ) -> None:
+        user1: models.User = await user_factory.create_async()
+        user2: models.User = await user_factory.create_async()
+        await job_factory.create_async(user_id=user2.id)
+
+        assert await sql_job_repo.has_jobs(user1.id) is False
+
+
+class TestSqlAlchemyJobRepositoryDelete:
+    async def test_deletes_job(
+        self,
+        sql_job_repo: repos.SqlAlchemyJobRepository,
+        user_factory: UserFactory,
+        job_factory: JobFactory,
+    ) -> None:
+        user: models.User = await user_factory.create_async()
+        job: models.Job = await job_factory.create_async(user_id=user.id)
+
+        await sql_job_repo.delete(pk=job.id)
+
+        assert await sql_job_repo.get_by_pk(job.id) is None
+
+    async def test_does_not_affect_other_jobs(
+        self,
+        sql_job_repo: repos.SqlAlchemyJobRepository,
+        user_factory: UserFactory,
+        job_factory: JobFactory,
+    ) -> None:
+        user: models.User = await user_factory.create_async()
+        job1: models.Job = await job_factory.create_async(user_id=user.id)
+        job2: models.Job = await job_factory.create_async(user_id=user.id)
+
+        await sql_job_repo.delete(pk=job1.id)
+
+        assert await sql_job_repo.get_by_pk(job1.id) is None
+        assert await sql_job_repo.get_by_pk(job2.id) is not None
+
+
+class TestSqlAlchemyJobRepositoryFindByNormalizedUrl:
+    async def test_returns_job_when_found(
+        self,
+        sql_job_repo: repos.SqlAlchemyJobRepository,
+        user_factory: UserFactory,
+        job_factory: JobFactory,
+    ) -> None:
+        user: models.User = await user_factory.create_async()
+        await job_factory.create_async(
+            user_id=user.id,
+            normalized_url="example.com/jobs/123",
+        )
+
+        result = await sql_job_repo.find_by_normalized_url("example.com/jobs/123")
+
+        assert result is not None
+        assert result.normalized_url == "example.com/jobs/123"
+
+    async def test_returns_none_when_not_found(
+        self,
+        sql_job_repo: repos.SqlAlchemyJobRepository,
+    ) -> None:
+        result = await sql_job_repo.find_by_normalized_url("nonexistent.com/jobs/999")
+
+        assert result is None
+
+    async def test_matches_regardless_of_original_url(
+        self,
+        sql_job_repo: repos.SqlAlchemyJobRepository,
+        user_factory: UserFactory,
+        job_factory: JobFactory,
+    ) -> None:
+        user: models.User = await user_factory.create_async()
+        await job_factory.create_async(
+            user_id=user.id,
+            url="https://www.EXAMPLE.com/jobs/123?ref=tg",
+            normalized_url="example.com/jobs/123",
+        )
+
+        result = await sql_job_repo.find_by_normalized_url("example.com/jobs/123")
+
+        assert result is not None

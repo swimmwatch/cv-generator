@@ -19,6 +19,7 @@ from utils.lang import _
 from utils.pagination import PageSizePagination
 
 from ..tasks import download_generated_cv
+from ..utils import get_lang
 from ..utils import send_response
 
 router = Router(name=__name__)
@@ -81,7 +82,7 @@ async def cv_detail(
 
     job = await job_service.get_by_pk(generated_cv.job_id)
     resume = await resume_service.get_by_pk(generated_cv.resume_id)
-    lang = getattr(callback.from_user, "language_code", None) if callback.from_user else None
+    lang = get_lang(callback.from_user)
     date_str = generated_cv.created_at.strftime("%d.%m.%Y %H:%M")
 
     text = telegram_template.render(

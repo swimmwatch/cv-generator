@@ -28,3 +28,14 @@ class NoActiveJobParsingFilter(BaseFilter):
         job_state_repo: repos.JobStateRepository = Provide["redis_job_state_repo"],
     ) -> bool:
         return not await job_state_repo.is_active(user.id)
+
+
+class HasJobFilter(BaseFilter):
+    @inject
+    async def __call__(
+        self,
+        message: Message,
+        user: dto.UserOutDTO,
+        job_service: services.JobService = Provide["job_service"],
+    ) -> bool:
+        return await job_service.has_jobs(user.id)

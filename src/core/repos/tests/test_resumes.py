@@ -272,6 +272,52 @@ class TestSqlAlchemyResumeRepositoryHasDoneResume:
     ) -> None:
         assert await sql_resume_repo.has_done_resume(uuid.uuid4()) is False
 
+    async def test_returns_false_when_only_processing(
+        self,
+        sql_resume_repo: repos.SqlAlchemyResumeRepository,
+        user_factory: UserFactory,
+        resume_factory: ResumeFactory,
+    ) -> None:
+        user: models.User = await user_factory.create_async()
+        await resume_factory.create_async(
+            user_id=user.id,
+            status=domains.ResumeProcessingStatus.PROCESSING,
+        )
+
+        assert await sql_resume_repo.has_done_resume(user.id) is False
+
+    async def test_returns_false_when_only_failed(
+        self,
+        sql_resume_repo: repos.SqlAlchemyResumeRepository,
+        user_factory: UserFactory,
+        resume_factory: ResumeFactory,
+    ) -> None:
+        user: models.User = await user_factory.create_async()
+        await resume_factory.create_async(
+            user_id=user.id,
+            status=domains.ResumeProcessingStatus.FAILED,
+        )
+
+        assert await sql_resume_repo.has_done_resume(user.id) is False
+
+    async def test_returns_true_when_mixed_statuses_with_done(
+        self,
+        sql_resume_repo: repos.SqlAlchemyResumeRepository,
+        user_factory: UserFactory,
+        resume_factory: ResumeFactory,
+    ) -> None:
+        user: models.User = await user_factory.create_async()
+        await resume_factory.create_async(
+            user_id=user.id,
+            status=domains.ResumeProcessingStatus.PENDING,
+        )
+        await resume_factory.create_async(
+            user_id=user.id,
+            status=domains.ResumeProcessingStatus.DONE,
+        )
+
+        assert await sql_resume_repo.has_done_resume(user.id) is True
+
 
 class TestSqlAlchemyResumeRepositoryUpdateStatus:
     async def test_updates_status(
@@ -292,6 +338,15 @@ class TestSqlAlchemyResumeRepositoryUpdateStatus:
         assert result is not None
         assert result.status == domains.ResumeProcessingStatus.DONE
 
+    async def test_update_nonexistent_resume_does_not_raise(
+        self,
+        sql_resume_repo: repos.SqlAlchemyResumeRepository,
+    ) -> None:
+        await sql_resume_repo.update_status(
+            uuid.uuid4(),
+            domains.ResumeProcessingStatus.DONE,
+        )
+
 
 class TestSqlAlchemyResumeRepositoryUpdateTitle:
     async def test_updates_title(
@@ -311,3 +366,21 @@ class TestSqlAlchemyResumeRepositoryUpdateTitle:
         result = await sql_resume_repo.get_by_pk(resume.id)
         assert result is not None
         assert result.title == "New Title"
+
+    async def test_overwrites_existing_title(
+        self,
+        sql_resume_repo: repos.SqlAlchemyResumeRepository,
+        user_factory: UserFactory,
+        resume_factory: ResumeFactory,
+    ) -> None:
+        user: models.User = await user_factory.create_async()
+        resume: models.Resume = await resume_factory.create_async(
+            user_id=user.id,
+            title="Old Title",
+        )
+
+        await sql_resume_repo.update_title(resume.id, "Updated Title")
+
+        result = await sql_resume_repo.get_by_pk(resume.id)
+        assert result is not None
+        assert result.title == "Updated Title"

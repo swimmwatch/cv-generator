@@ -10,6 +10,7 @@ class JobCreateDTO(BaseDTO):
     user_id: uuid.UUID
     title: str
     url: str
+    normalized_url: str
     metadata_: typing.Any = None
 
 
@@ -18,4 +19,5 @@ class JobOutDTO(BaseDTO, TimedMixinDTO):
     user_id: uuid.UUID
     title: str
     url: str
+    normalized_url: str
     metadata_: typing.Any = None

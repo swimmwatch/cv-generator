@@ -189,6 +189,25 @@ async def parse_job(
         tg_id = int(user.messenger_id)
         log = log.bind(tg_id=tg_id)
 
+        existing_job = await job_service.find_existing_job(job_url)
+        if existing_job is not None:
+            log.info("Found existing job with same URL, copying.", source_job_id=str(existing_job.id))
+            try:
+                new_job = await job_service.copy_job_for_user(
+                    source_job=existing_job,
+                    user_id=domains.UserID(user_id),
+                    url=job_url,
+                )
+                log.info("Job copied.", job_id=str(new_job.id))
+                text = telegram_template.render("job/parsed.html", None, job_title=new_job.title)
+                await send_tg_bot_message.kiq(tg_id, text)
+            except Exception:
+                log.error("Failed to copy existing job.")
+                await send_tg_bot_message.kiq(tg_id, _("Failed to parse the vacancy. Please try again later."))
+            finally:
+                await job_state_repo.clear_active(user_id=domains.UserID(user_id))
+            return
+
         try:
             thread_id = context.message.task_id
             result = await job_parser_agent.run(thread_id=thread_id, job_reference=job_url)
@@ -272,6 +291,7 @@ async def generate_cv(
         thread_id = context.message.task_id
         result = await cv_generator_agent.run(
             thread_id=thread_id,
+            user_id=user_id,
             job_text=job_text,
             job_title=job_title,
             job_id=job_id,
@@ -369,4 +389,30 @@ async def download_generated_cv(
         log.exception("Failed to download generated CV.", attempt=retries + 1)
         if retries + 1 >= max_retries:
             await send_tg_bot_message.kiq(tg_id, _("Failed to send the CV document. Please try again later."))
+        raise
+
+
+@broker.task(retry_on_error=True, max_retries=3)
+@inject
+async def download_resume(
+    tg_id: int,
+    object_name: str,
+    file_name: str,
+    resume_service: services.ResumeService = Provide["resume_service"],
+    tg_bot: Bot = Closing[Provide["tg_bot_client"]],
+    context: Context = _taskiq_context,
+) -> None:
+    log = logger.bind(tg_id=tg_id, object_name=object_name)
+
+    retries = int(context.message.labels.get("_retries", 0))
+    max_retries = int(context.message.labels.get("max_retries", 3))
+
+    try:
+        file_bytes = await resume_service.download(object_name)
+        document = BufferedInputFile(file_bytes, filename=file_name)
+        await tg_bot.send_document(tg_id, document=document)
+    except Exception:
+        log.exception("Failed to download resume.", attempt=retries + 1)
+        if retries + 1 >= max_retries:
+            await send_tg_bot_message.kiq(tg_id, _("Failed to send the resume document. Please try again later."))
         raise

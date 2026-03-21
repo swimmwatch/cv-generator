@@ -34,6 +34,7 @@ class EvidenceMap(BaseModel):
 
 
 class CvGeneratorState(TypedDict):
+    user_id: str
     job_text: str
     job_title: str
     job_id: str

@@ -6,6 +6,7 @@ from dependency_injector.wiring import inject
 
 from infra.bot.template import TelegramTemplate
 
+from ..utils import get_lang
 from ..utils import send_response
 
 router = Router(name=__name__)
@@ -18,7 +19,7 @@ async def start(
     telegram_template: TelegramTemplate = Provide["telegram_template"],
 ) -> None:
     user = message.from_user
-    lang = getattr(user, "language_code", None) if user else None
+    lang = get_lang(user)
 
     response = telegram_template.render(
         "greet.html",

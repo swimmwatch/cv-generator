@@ -40,6 +40,7 @@ async def generate(
     resume_service: services.ResumeService = Provide["resume_service"],
 ) -> None:
     await state.clear()
+    await state.set_state(GenerateStates.selecting_resume)
     await _show_resume_list(message=message, user=user, page=1, resume_service=resume_service)
 
 
@@ -47,11 +48,11 @@ async def generate(
 async def generate_no_resume(message: Message) -> None:
     await send_response(
         message,
-        _("You don't have any processed resumes yet. Please upload a resume first using /start."),
+        _("You don't have any processed resumes yet. Please upload a resume first using /resumes."),
     )
 
 
-@router.callback_query(F.data.startswith(_GEN_RESUME_PAGE_PREFIX))
+@router.callback_query(GenerateStates.selecting_resume, F.data.startswith(_GEN_RESUME_PAGE_PREFIX))
 @inject
 async def generate_resume_page(
     callback: CallbackQuery,
@@ -63,15 +64,15 @@ async def generate_resume_page(
     await callback.answer()
     if isinstance(callback.message, Message):
         await _show_resume_list(
-            message=callback.message,
-            user=user,
-            page=page,
-            resume_service=resume_service,
+            callback.message,
+            user,
+            page,
+            resume_service,
             edit=True,
         )
 
 
-@router.callback_query(F.data.startswith(_GEN_RESUME_SELECT_PREFIX))
+@router.callback_query(GenerateStates.selecting_resume, F.data.startswith(_GEN_RESUME_SELECT_PREFIX))
 @inject
 async def generate_resume_select(
     callback: CallbackQuery,
@@ -157,7 +158,7 @@ async def _show_resume_list(
     )
 
     if not resumes and page == 1:
-        text = _("You haven't uploaded any resumes yet. Use /start to upload one.")
+        text = _("You haven't uploaded any resumes yet. Use /resume to upload one.")
         if edit:
             await message.edit_text(text)
         else:

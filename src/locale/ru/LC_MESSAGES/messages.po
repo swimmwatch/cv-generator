@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-03-18 23:01+0300\n"
+"POT-Creation-Date: 2026-03-21 14:20+0300\n"
 "PO-Revision-Date: 2024-05-05 14:28+0300\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ru\n"
@@ -18,74 +18,135 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: src/apps/bot/tasks.py:196 src/apps/bot/tasks.py:203
+#: src/apps/bot/tasks.py:197 src/apps/bot/tasks.py:204
 msgid "Failed to parse the vacancy. Please try again later."
 msgstr "Не удалось обработать вакансию. Пожалуйста, попробуйте позже."
 
-#: src/apps/bot/tasks.py:255 src/apps/bot/tasks.py:261
-#: src/apps/bot/tasks.py:283 src/apps/bot/tasks.py:288
+#: src/apps/bot/tasks.py:256 src/apps/bot/tasks.py:262
+#: src/apps/bot/tasks.py:285 src/apps/bot/tasks.py:290
 msgid "Failed to generate the CV. Please try again later."
 msgstr "Не удалось сгенерировать резюме. Пожалуйста, попробуйте позже."
 
-#: src/apps/bot/tasks.py:344 src/apps/bot/tasks.py:370
+#: src/apps/bot/tasks.py:346 src/apps/bot/tasks.py:372
 msgid "Failed to send the CV document. Please try again later."
 msgstr "Не удалось отправить документ с резюме. Пожалуйста, попробуйте позже."
 
-#: src/apps/bot/handlers/cv.py:79 src/apps/bot/handlers/cv.py:149
+#: src/apps/bot/tasks.py:398
+#, fuzzy
+msgid "Failed to send the resume document. Please try again later."
+msgstr "Не удалось отправить документ с резюме. Пожалуйста, попробуйте позже."
+
+#: src/apps/bot/handlers/chat.py:93
+#, fuzzy
+msgid "You don't have any saved vacancies yet. Use /job to add one before starting a chat."
+msgstr "У вас ещё нет сохранённых вакансий. Используйте /job, чтобы добавить."
+
+#: src/apps/bot/handlers/chat.py:101
+#, fuzzy
+msgid "You don't have any processed resumes yet. Use /resume to upload a resume before starting a chat."
+msgstr "У вас ещё нет обработанных резюме. Пожалуйста, сначала загрузите резюме с помощью /resumes."
+
+#: src/apps/bot/handlers/chat.py:110
+msgid "To start a chat, you need a resume and a job posting. Use /resume to upload a resume and /job to add a job posting."
+msgstr ""
+
+#: src/apps/bot/handlers/chat.py:190
+msgid "You can now ask questions. Send /cancel to exit the chat."
+msgstr "Теперь вы можете задавать вопросы. Отправьте /cancel для выхода из чата."
+
+#: src/apps/bot/handlers/chat.py:198
+msgid "Chat ended."
+msgstr "Чат завершён."
+
+msgid "To stop the chat, use /cancel"
+msgstr "Чтобы остановить чат, используйте /cancel"
+
+#: src/apps/bot/handlers/chat.py:214
+msgid "Please send a text message."
+msgstr "Пожалуйста, отправьте текстовое сообщение."
+
+#: src/apps/bot/handlers/chat.py:230
+msgid "Something went wrong. Please try /chat again."
+msgstr "Что-то пошло не так. Попробуйте /chat снова."
+
+#: src/apps/bot/handlers/chat.py:317
+msgid "No data found. Please upload documents first."
+msgstr "Данные не найдены. Сначала загрузите документы."
+
+#: src/apps/bot/handlers/chat.py:321
+msgid "An error occurred while generating a response. Please try again."
+msgstr "Произошла ошибка при генерации ответа. Попробуйте ещё раз."
+
+#: src/apps/bot/handlers/chat.py:346 src/apps/bot/handlers/generate.py:161
+#: src/apps/bot/handlers/resumes.py:216
+#, fuzzy
+msgid "You haven't uploaded any resumes yet. Use /resume to upload one."
+msgstr "Вы ещё не загрузили ни одного резюме. Используйте /resume, чтобы загрузить."
+
+#: src/apps/bot/handlers/chat.py:372
+#, fuzzy, python-format
+msgid "Select a resume for chat (page %d of %d):"
+msgstr "Выберите резюме для генерации (страница %d из %d):"
+
+#: src/apps/bot/handlers/chat.py:393 src/apps/bot/handlers/generate.py:208
+#: src/apps/bot/handlers/jobs.py:170
+msgid "You don't have any saved vacancies yet. Use /job to parse one."
+msgstr "У вас ещё нет сохранённых вакансий. Используйте /job, чтобы добавить."
+
+#: src/apps/bot/handlers/chat.py:418
+#, fuzzy, python-format
+msgid "Select a vacancy for chat (page %d of %d):"
+msgstr "Выберите вакансию для генерации (страница %d из %d):"
+
+#: src/apps/bot/handlers/cv.py:80 src/apps/bot/handlers/cv.py:150
 msgid "Generated CV not found."
 msgstr "Сгенерированное резюме не найдено."
 
-#: src/apps/bot/handlers/cv.py:99
+#: src/apps/bot/handlers/cv.py:100 src/apps/bot/handlers/resumes.py:109
 msgid "⬇️ Download"
 msgstr "⬇️ Скачать"
 
-#: src/apps/bot/handlers/cv.py:105
+#: src/apps/bot/handlers/cv.py:106 src/apps/bot/handlers/jobs.py:104
+#: src/apps/bot/handlers/resumes.py:121
 msgid "⬅️ Back"
 msgstr "⬅️ Назад"
 
-#: src/apps/bot/handlers/cv.py:153
+#: src/apps/bot/handlers/cv.py:154 src/apps/bot/handlers/resumes.py:169
 msgid "Sending the document..."
 msgstr "Отправка документа..."
 
-#: src/apps/bot/handlers/cv.py:175
+#: src/apps/bot/handlers/cv.py:176
 msgid "You don't have any generated CVs yet. Use /generate to create one."
 msgstr "У вас ещё нет сгенерированных резюме. Используйте /generate, чтобы создать."
 
-#: src/apps/bot/handlers/cv.py:201
+#: src/apps/bot/handlers/cv.py:202
 #, python-format
 msgid "Generated CVs (page %d of %d):"
 msgstr "Сгенерированные резюме (страница %d из %d):"
 
-#: src/apps/bot/handlers/fallback.py:23
+#: src/apps/bot/handlers/fallback.py:24
 msgid "Ops! I don't know what I can do."
 msgstr "Упс! Я не знаю, что мне нужно тут сделать."
 
-#: src/apps/bot/handlers/generate.py:50
-msgid "You don't have any processed resumes yet. Please upload a resume first using /start."
-msgstr "У вас ещё нет обработанных резюме. Пожалуйста, сначала загрузите резюме с помощью /start."
+#: src/apps/bot/handlers/generate.py:51
+#, fuzzy
+msgid "You don't have any processed resumes yet. Please upload a resume first using /resumes."
+msgstr "У вас ещё нет обработанных резюме. Пожалуйста, сначала загрузите резюме с помощью /resumes."
 
-#: src/apps/bot/handlers/generate.py:130
+#: src/apps/bot/handlers/generate.py:131
 msgid "Something went wrong. Please try /generate again."
 msgstr "Что-то пошло не так. Пожалуйста, попробуйте /generate снова."
 
-#: src/apps/bot/handlers/generate.py:136
+#: src/apps/bot/handlers/generate.py:137
 msgid "Generating CV. Please wait..."
 msgstr "Генерация резюме. Пожалуйста, подождите..."
 
-#: src/apps/bot/handlers/generate.py:160 src/apps/bot/handlers/resumes.py:75
-msgid "You haven't uploaded any resumes yet. Use /start to upload one."
-msgstr "Вы ещё не загрузили ни одного резюме. Используйте /start, чтобы загрузить."
-
-#: src/apps/bot/handlers/generate.py:186
+#: src/apps/bot/handlers/generate.py:187
 #, python-format
 msgid "Select a resume for CV generation (page %d of %d):"
 msgstr "Выберите резюме для генерации (страница %d из %d):"
 
-#: src/apps/bot/handlers/generate.py:207 src/apps/bot/handlers/jobs.py:75
-msgid "You don't have any saved vacancies yet. Use /job to parse one."
-msgstr "У вас ещё нет сохранённых вакансий. Используйте /job, чтобы добавить."
-
-#: src/apps/bot/handlers/generate.py:232
+#: src/apps/bot/handlers/generate.py:233
 #, python-format
 msgid "Select a vacancy for CV generation (page %d of %d):"
 msgstr "Выберите вакансию для генерации (страница %d из %d):"
@@ -110,12 +171,40 @@ msgstr "Ссылка недоступна. Пожалуйста, проверь�
 msgid "Parsing the vacancy. Please wait..."
 msgstr "Разбор вакансии. Пожалуйста, подождите..."
 
-#: src/apps/bot/handlers/jobs.py:100
+#: src/apps/bot/handlers/jobs.py:82 src/apps/bot/handlers/jobs.py:148
+msgid "Vacancy not found."
+msgstr "Вакансия не найдена."
+
+#: src/apps/bot/handlers/jobs.py:98 src/apps/bot/handlers/resumes.py:115
+msgid "🗑 Delete"
+msgstr "🗑 Удалить"
+
+#: src/apps/bot/handlers/jobs.py:154
+msgid "Vacancy deleted."
+msgstr "Вакансия удалена."
+
+#: src/apps/bot/handlers/jobs.py:195
 #, python-format
 msgid "Your vacancies (page %d of %d):"
 msgstr "Ваши вакансии (страница %d из %d):"
 
-#: src/apps/bot/handlers/resumes.py:101
+#: src/apps/bot/handlers/resume.py:69
+#, fuzzy
+msgid "Failed to download the file. Please try again."
+msgstr "Не удалось сгенерировать резюме. Пожалуйста, попробуйте позже."
+
+#: src/apps/bot/handlers/resumes.py:92 src/apps/bot/handlers/resumes.py:165
+#: src/apps/bot/handlers/resumes.py:191
+#, fuzzy
+msgid "Resume not found."
+msgstr "Сгенерированное резюме не найдено."
+
+#: src/apps/bot/handlers/resumes.py:197
+#, fuzzy
+msgid "Resume deleted."
+msgstr "удалено"
+
+#: src/apps/bot/handlers/resumes.py:242
 #, python-format
 msgid "Your resumes (page %d of %d):"
 msgstr "Ваши резюме (страница %d из %d):"
@@ -132,25 +221,29 @@ msgstr "Я создаю резюме, адаптированное под кон
 msgid "Available commands:"
 msgstr "Доступные команды:"
 
-#: src/infra/bot/templates/greet.html:6
+#: src/infra/bot/templates/greet.html:7
 msgid "upload and manage your resumes"
 msgstr "загрузить и управлять своими резюме"
 
-#: src/infra/bot/templates/greet.html:7
+#: src/infra/bot/templates/greet.html:9
 msgid "save a job posting"
 msgstr "сохранить вакансию"
 
-#: src/infra/bot/templates/greet.html:8
+#: src/infra/bot/templates/greet.html:11
 msgid "view saved job postings"
 msgstr "просмотреть сохранённые вакансии"
 
-#: src/infra/bot/templates/greet.html:9
+#: src/infra/bot/templates/greet.html:13
 msgid "generate a CV for a job posting"
 msgstr "сгенерировать резюме под вакансию"
 
-#: src/infra/bot/templates/greet.html:10
+#: src/infra/bot/templates/greet.html:15
 msgid "view generated CVs"
 msgstr "просмотреть сгенерированные резюме"
+
+#: src/infra/bot/templates/greet.html:17
+msgid "chat with your resumes or job postings"
+msgstr "чат с вашими резюме или вакансиями"
 
 #: src/infra/bot/templates/admin/approved.html:3
 #, python-format
@@ -323,24 +416,38 @@ msgid "Resume"
 msgstr "Резюме"
 
 #: src/infra/bot/templates/generated_cv/detail.html:9
+#: src/infra/bot/templates/job/detail.html:5
+#: src/infra/bot/templates/resume/detail.html:2
 msgid "Date"
 msgstr "Дата"
+
+#: src/infra/bot/templates/job/detail.html:1
+msgid "Title"
+msgstr "Название"
+
+#: src/infra/bot/templates/job/detail.html:3
+msgid "URL"
+msgstr "Ссылка"
 
 #: src/infra/bot/templates/job/parsed.html:1
 msgid "Vacancy parsed:"
 msgstr "Вакансия обработана:"
 
-#: src/infra/bot/templates/job/parsed.html:4
-msgid "Tailoring your resume..."
-msgstr "Адаптация вашего резюме..."
+#: src/infra/bot/templates/resume/detail.html:1
+msgid "File"
+msgstr ""
+
+#: src/infra/bot/templates/resume/detail.html:3
+msgid "Status"
+msgstr ""
 
 #: src/infra/bot/templates/resume/done.html:1
 msgid "Your resume has been successfully processed and saved!"
 msgstr "Ваше резюме было успешно обработано и сохранено!"
 
 #: src/infra/bot/templates/resume/done.html:4
-msgid "You can now use the /job command to match your resume against job listings."
-msgstr "Теперь вы можете использовать команду /job для сопоставления резюме с вакансиями."
+msgid "You can now use the /job command to upload and save a job posting."
+msgstr "Теперь вы можете использовать команду /job, чтобы загрузить и сохранить вакансию."
 
 #: src/infra/bot/templates/resume/failed.html:3
 msgid "Failed to process your resume. Please re-upload it and enter the /start command again."
@@ -508,4 +615,52 @@ msgstr "формате."
 
 #~ msgid "You upload your resume, then specify the job opening, and a resume will be generated for that opening."
 #~ msgstr "Вы загружаете своё резюме, затем указываете вакансию, и резюме будет сгенерировано под эту вакансию."
+
+#~ msgid "Resume not found."
+#~ msgstr "Резюме не найдено."
+
+#~ msgid "🗑 Delete"
+#~ msgstr "🗑 Удалить"
+
+#~ msgid "Resume deleted."
+#~ msgstr "Резюме удалено."
+
+#~ msgid "File"
+#~ msgstr "Файл"
+
+#~ msgid "Status"
+#~ msgstr "Статус"
+
+#~ msgid "Failed to download the file. Please try again."
+#~ msgstr "Не удалось загрузить файл. Пожалуйста, попробуйте ещё раз."
+
+#~ msgid "Failed to send the resume document. Please try again later."
+#~ msgstr "Не удалось отправить документ резюме. Пожалуйста, попробуйте позже."
+
+#~ msgid "You don't have any saved vacancies yet. Use /job to add one before starting a chat."
+#~ msgstr "У вас ещё нет сохранённых вакансий. Используйте /job, чтобы добавить вакансию перед началом чата."
+
+#~ msgid "You don't have any processed resumes yet. Use /resume to upload a resume before starting a chat."
+#~ msgstr "У вас ещё нет обработанных резюме. Используйте /resume, чтобы загрузить резюме перед началом чата."
+
+#~ msgid "To start a chat, you need a resume and a job posting. Use /resume to upload a resume and /job to add a job posting."
+#~ msgstr "Для начала чата вам нужны резюме и вакансия. Используйте /resume, чтобы загрузить резюме, и /job, чтобы добавить вакансию."
+
+#~ msgid "📄 Resumes"
+#~ msgstr "📄 Резюме"
+
+#~ msgid "💼 Jobs"
+#~ msgstr "💼 Вакансии"
+
+#~ msgid "Select what you want to chat about:"
+#~ msgstr "Выберите, о чём хотите поговорить:"
+
+#~ msgid "No items found. Please upload documents first."
+#~ msgstr "Ничего не найдено. Сначала загрузите документы."
+
+#~ msgid "Select an item to chat about (page %d of %d):"
+#~ msgstr "Выберите элемент для общения (стр. %d из %d):"
+
+#~ msgid "Tailoring your resume..."
+#~ msgstr "Адаптация вашего резюме..."
 

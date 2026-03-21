@@ -1,6 +1,12 @@
+import typing
+
 from aiogram.enums import ParseMode
 from aiogram.types import Message
 from aiogram.types import ReplyMarkupUnion
+
+
+def get_lang(user: typing.Any) -> str | None:
+    return getattr(user, "language_code", None) if user else None
 
 
 async def send_response(

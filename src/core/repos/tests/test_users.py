@@ -64,6 +64,21 @@ class TestSqlAlchemyUserRepositoryCreateOne:
         assert result.is_staff is True
         assert result.password_hash == pw
 
+    async def test_creates_user_with_language_code(
+        self,
+        sql_user_repo: repos.SqlAlchemyUserRepository,
+    ) -> None:
+        data = dto.UserCreateDTO(
+            messenger_id="lang_user",
+            first_name="Lang",
+            is_superuser=False,
+            is_staff=False,
+            language_code="ru",
+        )
+        result = await sql_user_repo.create_one(data)
+
+        assert result.language_code == "ru"
+
 
 class TestSqlAlchemyUserRepositoryGetByPk:
     async def test_returns_user(
@@ -165,3 +180,14 @@ class TestSqlAlchemyUserRepositoryUpdateChanges:
     ) -> None:
         result = await sql_user_repo.update_changes(uuid.uuid4(), {"first_name": "X"})
         assert result is None
+
+    async def test_sets_optional_field_to_none(
+        self,
+        sql_user_repo: repos.SqlAlchemyUserRepository,
+        user_factory: UserFactory,
+    ) -> None:
+        user: models.User = await user_factory.create_async(last_name="Present")
+        result = await sql_user_repo.update_changes(user.id, {"last_name": None})
+
+        assert result is not None
+        assert result.last_name is None

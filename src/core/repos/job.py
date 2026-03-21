@@ -4,7 +4,7 @@ import uuid
 from redis.asyncio import Redis
 
 _JOB_STATE_KEY_PREFIX = "job_parsing:"
-_JOB_STATE_TTL = 600
+_JOB_STATE_TTL = 180
 
 
 class JobStateRepository(typing.Protocol):

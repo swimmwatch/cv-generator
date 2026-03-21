@@ -37,6 +37,7 @@ class TestSqlAlchemyGeneratedCVRepositoryCreateOne:
         assert result.object_name == "generated_cvs/test.pdf"
         assert result.file_name == "cv_test.pdf"
         assert result.id is not None
+        assert result.created_at is not None
 
 
 class TestSqlAlchemyGeneratedCVRepositoryGetByPk:

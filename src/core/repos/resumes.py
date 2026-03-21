@@ -33,6 +33,9 @@ class ResumeRepository(typing.Protocol):
     async def update_title(self, pk: uuid.UUID, title: str) -> None:
         pass
 
+    async def delete(self, pk: uuid.UUID) -> None:
+        pass
+
 
 class SqlAlchemyResumeRepository:
     def __init__(self, session: AsyncSession) -> None:
@@ -82,3 +85,6 @@ class SqlAlchemyResumeRepository:
 
     async def update_title(self, pk: uuid.UUID, title: str) -> None:
         await self._resume_dal.filter(id=pk).update(title=title)
+
+    async def delete(self, pk: uuid.UUID) -> None:
+        await self._resume_dal.filter(id=pk).delete()

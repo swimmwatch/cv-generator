@@ -21,7 +21,6 @@ from structlog.testing import LogCapture
 
 from infra.db.config import DatabaseSettings
 from infra.logger.utils import get_logger
-from tests.factories.base import BaseSQLAFactory
 from utils.tests.utils import DontCloseAsyncSessionCM
 
 logger = get_logger(__name__)
@@ -161,6 +160,8 @@ def async_redis_client() -> fakeredis.FakeAsyncRedis:
 
 @pytest_asyncio.fixture(autouse=True)
 async def _wire_polyfactory_to_test_session(async_db_session: AsyncSession):
+    from tests.factories.base import BaseSQLAFactory
+
     BaseSQLAFactory.__async_session__ = lambda: DontCloseAsyncSessionCM(async_db_session)  # type: ignore[assignment]
     yield
     BaseSQLAFactory.__async_session__ = None

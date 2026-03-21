@@ -2,17 +2,14 @@
 DI container.
 """
 
-from collections.abc import AsyncIterator
-
-from aiogram import Bot
 from dependency_injector import providers
 from dependency_injector.containers import DeclarativeContainer
-from langgraph.checkpoint.redis.aio import AsyncRedisSaver
 from redis.asyncio import Redis as AsyncRedis
 
 from core import dal
 from core import repos
 from core import services
+from infra.agents.chat import ChatAgent
 from infra.agents.cv_generator import CvGeneratorAgent
 from infra.agents.job_parser import JobParserAgent
 from infra.agents.renderer import ResumeRenderer
@@ -20,26 +17,12 @@ from infra.bot.template import TelegramTemplate
 from infra.config import Settings
 from infra.db.client import AsyncDatabase
 from infra.db.utils.transactions import AsyncSqlAlchemyTransactionManager
-from infra.logger.utils import get_logger
+from infra.di.resources import init_agent_checkpointer
+from infra.di.resources import init_tg_bot
 from infra.redis.transactions import AsyncRedisTransactionManager
 from infra.weaviate.client import WeaviateClient
 from utils.storages.impl.s3 import S3AsyncStorage
 from utils.transactions.manager import AsyncTransactionManager
-
-logger = get_logger(__name__)
-
-
-async def init_tg_bot(token: str) -> AsyncIterator[Bot]:
-    bot = Bot(token=token)
-    yield bot
-    await bot.session.close()
-
-
-async def init_agent_checkpointer(redis_url: str, ttl: dict) -> AsyncIterator[AsyncRedisSaver]:
-    redis_client = AsyncRedis.from_url(redis_url)
-    saver = AsyncRedisSaver(redis_client=redis_client, ttl=ttl)
-    async with saver:
-        yield saver
 
 
 class Container(DeclarativeContainer):
@@ -161,6 +144,16 @@ class Container(DeclarativeContainer):
         client=weaviate_async_client,
     )
 
+    # Repositories (Weaviate)
+    weaviate_resume_metadata_repo = providers.Factory(
+        repos.WeaviateResumeMetadataRepository,
+        resume_metadata_dal=resume_metadata_dal,
+    )
+    weaviate_job_metadata_repo = providers.Factory(
+        repos.WeaviateJobMetadataRepository,
+        job_metadata_dal=job_metadata_dal,
+    )
+
     # Services
     user_service = providers.Factory(
         services.UserService,
@@ -169,12 +162,12 @@ class Container(DeclarativeContainer):
     resume_service = providers.Factory(
         services.ResumeService,
         async_storage=s3_async_storage,
-        resume_metadata_dal=resume_metadata_dal,
+        resume_metadata_repo=weaviate_resume_metadata_repo,
         resume_repo=sql_resume_repo,
     )
     job_service = providers.Factory(
         services.JobService,
-        job_metadata_dal=job_metadata_dal,
+        job_metadata_repo=weaviate_job_metadata_repo,
         job_repo=sql_job_repo,
     )
     generated_cv_service = providers.Factory(
@@ -213,9 +206,19 @@ class Container(DeclarativeContainer):
             lambda secret: secret.get_secret_value(),
             config.agents.model_token,
         ),
-        resume_metadata_dal=resume_metadata_dal,
-        job_metadata_dal=job_metadata_dal,
+        resume_metadata_repo=weaviate_resume_metadata_repo,
+        job_metadata_repo=weaviate_job_metadata_repo,
         checkpointer=agent_checkpointer,
+    )
+    chat_agent = providers.Factory(
+        ChatAgent,
+        model_name=config.agents.model_name,
+        model_token=providers.Callable(
+            lambda secret: secret.get_secret_value(),
+            config.agents.model_token,
+        ),
+        resume_metadata_repo=weaviate_resume_metadata_repo,
+        job_metadata_repo=weaviate_job_metadata_repo,
     )
 
     # External services

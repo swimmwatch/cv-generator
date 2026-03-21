@@ -27,6 +27,11 @@ class Job(Model, IdUuidMixin, TimedMixin):
     )
     title: orm.Mapped[str] = orm.mapped_column(sa.String(MAX_TITLE_LENGTH), nullable=False)
     url: orm.Mapped[str] = orm.mapped_column(sa.String(MAX_URL_LENGTH), nullable=False)
+    normalized_url: orm.Mapped[str] = orm.mapped_column(
+        sa.String(MAX_URL_LENGTH),
+        nullable=False,
+        index=True,
+    )
     metadata_: orm.Mapped[dict] = orm.mapped_column(
         "metadata",
         sa.JSON,

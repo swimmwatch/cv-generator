@@ -17,7 +17,7 @@ from pydantic_ai.models import Model
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
-from core import dal
+from core import repos
 from infra.agents.base import BaseAgent
 from infra.agents.schemas.cv_generator import CvGeneratorResult
 from infra.agents.schemas.cv_generator import CvGeneratorState
@@ -108,14 +108,14 @@ class CvGeneratorAgent(BaseAgent[CvGeneratorState, CvGeneratorResult]):
         self,
         model_name: str,
         model_token: str,
-        resume_metadata_dal: dal.ResumeMetadataDAL,
-        job_metadata_dal: dal.JobMetadataDAL,
+        resume_metadata_repo: repos.ResumeMetadataRepository,
+        job_metadata_repo: repos.JobMetadataRepository,
         max_retries: int = 2,
         checkpointer: BaseCheckpointSaver | None = None,
     ) -> None:
         self._max_retries = max_retries
-        self._resume_metadata_dal = resume_metadata_dal
-        self._job_metadata_dal = job_metadata_dal
+        self._resume_metadata_repo = resume_metadata_repo
+        self._job_metadata_repo = job_metadata_repo
         model = OpenAIChatModel(
             model_name,
             provider=OpenAIProvider(api_key=model_token),
@@ -143,11 +143,13 @@ class CvGeneratorAgent(BaseAgent[CvGeneratorState, CvGeneratorResult]):
     def _build_graph(self, agent: Agent[Any, Any]) -> StateGraph:
         vacancy_agent = self._vacancy_agent
         evidence_agent = self._evidence_agent
-        resume_dal = self._resume_metadata_dal
-        job_dal = self._job_metadata_dal
+        resume_repo = self._resume_metadata_repo
+        job_repo = self._job_metadata_repo
         max_retries = self._max_retries
 
         async def validate_input(state: CvGeneratorState) -> dict:
+            if not state["user_id"].strip():
+                return {"error": "user_id is empty"}
             if not state["job_text"].strip():
                 return {"error": "job_text is empty"}
             if not state["job_title"].strip():
@@ -173,8 +175,9 @@ class CvGeneratorAgent(BaseAgent[CvGeneratorState, CvGeneratorResult]):
                     "Generate targeted search queries for resume evidence retrieval."
                 )
                 deps = SearchDeps(
-                    resume_metadata_dal=resume_dal,
-                    job_metadata_dal=job_dal,
+                    resume_metadata_repo=resume_repo,
+                    job_metadata_repo=job_repo,
+                    user_id=state["user_id"],
                     resume_id=state["resume_id"],
                     job_id=state["job_id"],
                 )
@@ -212,8 +215,9 @@ class CvGeneratorAgent(BaseAgent[CvGeneratorState, CvGeneratorResult]):
                     "Then map each vacancy requirement to the best evidence and classify."
                 )
                 deps = SearchDeps(
-                    resume_metadata_dal=resume_dal,
-                    job_metadata_dal=job_dal,
+                    resume_metadata_repo=resume_repo,
+                    job_metadata_repo=job_repo,
+                    user_id=state["user_id"],
                     resume_id=state["resume_id"],
                     job_id=state["job_id"],
                 )
@@ -360,6 +364,7 @@ class CvGeneratorAgent(BaseAgent[CvGeneratorState, CvGeneratorResult]):
     def _build_initial_state(self, **kwargs: Any) -> CvGeneratorState:
         template_json = kwargs.get("template_json", "") or dumps(ResumePayload.model_json_schema(), ensure_ascii=False)
         return {
+            "user_id": kwargs["user_id"],
             "job_text": kwargs["job_text"],
             "job_title": kwargs["job_title"],
             "job_id": kwargs["job_id"],

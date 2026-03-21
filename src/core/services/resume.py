@@ -1,6 +1,5 @@
 import uuid
 
-from core import dal
 from core import domains
 from core import dto
 from core import repos
@@ -12,11 +11,11 @@ class ResumeService:
     def __init__(
         self,
         async_storage: AsyncStorage,
-        resume_metadata_dal: dal.ResumeMetadataDAL,
+        resume_metadata_repo: repos.ResumeMetadataRepository,
         resume_repo: repos.ResumeRepository,
     ) -> None:
         self._async_storage = async_storage
-        self._resume_metadata_dal = resume_metadata_dal
+        self._resume_metadata_repo = resume_metadata_repo
         self._resume_repo = resume_repo
 
     async def upload(
@@ -69,6 +68,14 @@ class ResumeService:
     async def has_done_resume(self, user_id: domains.UserID) -> bool:
         return await self._resume_repo.has_done_resume(user_id=user_id)
 
+    async def delete(self, resume: dto.ResumeOutDTO) -> None:
+        await self._resume_metadata_repo.delete_by_resume_id(resume.id)
+        await self._async_storage.delete(resume.object_name)
+        await self._resume_repo.delete(pk=resume.id)
+
+    async def download(self, object_name: str) -> bytes:
+        return await self._async_storage.get_bytes(object_name)
+
     async def save_metadata(
         self,
         resume_id: uuid.UUID,
@@ -84,19 +91,33 @@ class ResumeService:
             last_name=last_name,
             resume_text=resume_text,
         )
-        await self._resume_metadata_dal.ensure_collection()
-        await self._resume_metadata_dal.delete_by_resume_id(str(resume_id))
-        await self._resume_metadata_dal.insert_chunks(chunks)
+        await self._resume_metadata_repo.ensure_collection()
+        await self._resume_metadata_repo.delete_by_resume_id(resume_id)
+        await self._resume_metadata_repo.insert_chunks(chunks)
         return chunks
 
     async def search_by_text(
         self,
         query: str,
         resume_id: uuid.UUID,
+        user_id: domains.UserID,
         limit: int = 10,
     ) -> list[str]:
-        return await self._resume_metadata_dal.search_by_text(
+        return await self._resume_metadata_repo.search_by_text(
             query=query,
-            resume_id=str(resume_id),
+            resume_id=resume_id,
+            user_id=user_id,
+            limit=limit,
+        )
+
+    async def search_by_user(
+        self,
+        query: str,
+        user_id: domains.UserID,
+        limit: int = 10,
+    ) -> list[str]:
+        return await self._resume_metadata_repo.search_by_user(
+            query=query,
+            user_id=user_id,
             limit=limit,
         )

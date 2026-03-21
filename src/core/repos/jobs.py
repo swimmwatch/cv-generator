@@ -22,6 +22,15 @@ class JobRepository(typing.Protocol):
     ) -> tuple[list[dto.JobOutDTO], int]:
         pass
 
+    async def has_jobs(self, user_id: uuid.UUID) -> bool:
+        pass
+
+    async def delete(self, pk: uuid.UUID) -> None:
+        pass
+
+    async def find_by_normalized_url(self, normalized_url: str) -> dto.JobOutDTO | None:
+        pass
+
 
 class SqlAlchemyJobRepository:
     def __init__(self, session: AsyncSession) -> None:
@@ -33,6 +42,7 @@ class SqlAlchemyJobRepository:
             user_id=data.user_id,
             title=data.title,
             url=data.url,
+            normalized_url=data.normalized_url,
             metadata_=data.metadata_,
         )
         return dto.JobOutDTO.from_model(job)
@@ -53,3 +63,16 @@ class SqlAlchemyJobRepository:
         query = self._job_dal.filter(user_id=user_id).order_by(created_at=True)
         items: list[typing.Any] = await query.limit(limit).offset(offset).scalars()
         return [dto.JobOutDTO.from_model(j) for j in items], total
+
+    async def has_jobs(self, user_id: uuid.UUID) -> bool:
+        count = await self._job_dal.filter(user_id=user_id).count()
+        return count > 0
+
+    async def delete(self, pk: uuid.UUID) -> None:
+        await self._job_dal.filter(id=pk).delete()
+
+    async def find_by_normalized_url(self, normalized_url: str) -> dto.JobOutDTO | None:
+        job = await self._job_dal.filter(normalized_url=normalized_url).first()
+        if not job:
+            return None
+        return dto.JobOutDTO.from_model(job)

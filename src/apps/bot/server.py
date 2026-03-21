@@ -76,6 +76,10 @@ async def lifespan(fastapi_app: FastAPI) -> typing.AsyncGenerator[None, None]:
             ],
         )
         container.init_resources()  # type: ignore[misc]
+
+        weaviate = container.weaviate_client()
+        await weaviate.connect()
+
         logger.info("DI resources was inited.")
 
         bot = create_bot(container)
@@ -108,6 +112,9 @@ async def lifespan(fastapi_app: FastAPI) -> typing.AsyncGenerator[None, None]:
         with suppress(Exception):
             if storage is not None:
                 await storage.close()
+
+        with suppress(Exception):
+            await weaviate.close()
 
         container.shutdown_resources()  # type: ignore[misc]
         await db.stop()

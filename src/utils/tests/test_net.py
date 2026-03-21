@@ -1,6 +1,8 @@
+import contextlib
 import ipaddress
 import secrets
 
+import aiohttp
 import pytest
 
 from utils import net
@@ -152,3 +154,55 @@ def test_random_public_ipv4_alias_backward_compat(monkeypatch):
     monkeypatch.setattr(secrets, "randbits", fake)
     assert net.random_public_ipv4_fallback() == public_ip
     assert calls["n"] == 1
+
+
+class TestIsUrlReachable:
+    @staticmethod
+    def _make_fake_session(monkeypatch, status=None, error=None, captured=None):
+        @contextlib.asynccontextmanager
+        async def _fake_head(url, **kwargs):
+            if error:
+                raise error
+            resp = aiohttp.ClientResponse.__new__(aiohttp.ClientResponse)
+            resp.status = status
+            yield resp
+
+        class FakeSession:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                pass
+
+            def head(self, url, **kwargs):
+                if captured is not None:
+                    captured.update(kwargs)
+                return _fake_head(url, **kwargs)
+
+        monkeypatch.setattr(aiohttp, "ClientSession", FakeSession)
+
+    async def test_returns_true_for_successful_response(self, monkeypatch):
+        self._make_fake_session(monkeypatch, status=200)
+        assert await net.is_url_reachable("https://example.com") is True
+
+    async def test_returns_true_for_4xx_response(self, monkeypatch):
+        self._make_fake_session(monkeypatch, status=404)
+        assert await net.is_url_reachable("https://example.com") is True
+
+    async def test_returns_false_for_5xx_response(self, monkeypatch):
+        self._make_fake_session(monkeypatch, status=500)
+        assert await net.is_url_reachable("https://example.com") is False
+
+    async def test_returns_false_on_connection_error(self, monkeypatch):
+        self._make_fake_session(monkeypatch, error=aiohttp.ClientError("fail"))
+        assert await net.is_url_reachable("https://example.com") is False
+
+    async def test_returns_false_on_timeout(self, monkeypatch):
+        self._make_fake_session(monkeypatch, error=TimeoutError())
+        assert await net.is_url_reachable("https://example.com") is False
+
+    async def test_passes_custom_timeout(self, monkeypatch):
+        captured: dict = {}
+        self._make_fake_session(monkeypatch, status=200, captured=captured)
+        await net.is_url_reachable("https://example.com", timeout=5)
+        assert captured["timeout"].total == 5

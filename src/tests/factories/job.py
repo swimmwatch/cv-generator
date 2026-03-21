@@ -13,6 +13,7 @@ class JobFactory(BaseSQLAFactory[models.Job]):
 
     title = Use(lambda: BaseSQLAFactory.__faker__.job())
     url = Use(lambda: BaseSQLAFactory.__faker__.url())
+    normalized_url = Use(lambda: BaseSQLAFactory.__faker__.domain_name())
     metadata_: dict = Use(lambda: {})  # type: ignore[assignment]
     user = Ignore()
     generated_cvs = Ignore()

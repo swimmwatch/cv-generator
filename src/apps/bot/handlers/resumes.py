@@ -1,27 +1,43 @@
 import math
+import uuid
 
 from aiogram import F
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery
+from aiogram.types import InlineKeyboardButton
 from aiogram.types import InlineKeyboardMarkup
 from aiogram.types import Message
 from dependency_injector.wiring import Provide
 from dependency_injector.wiring import inject
 
+from core import domains
 from core import dto
 from core import services
 from infra.bot.keyboards import get_paginated_list_keyboard
+from infra.bot.template import TelegramTemplate
 from utils.lang import _
 from utils.pagination import PageSizePagination
 
+from ..tasks import download_resume
+from ..utils import get_lang
 from ..utils import send_response
 
 router = Router(name=__name__)
 
 _CV_PAGE_PREFIX = "cv_page_"
 _CV_RESUME_PREFIX = "cv_resume_"
+_CV_BACK_PREFIX = "cv_back_"
+_CV_DOWNLOAD_PREFIX = "cv_dl_"
+_CV_DELETE_PREFIX = "cv_del_"
 _CV_PAGE_SIZE = 5
+
+_STATUS_LABELS: dict[domains.ResumeProcessingStatus, str] = {
+    domains.ResumeProcessingStatus.PENDING: "⏳",
+    domains.ResumeProcessingStatus.PROCESSING: "🔄",
+    domains.ResumeProcessingStatus.DONE: "✅",
+    domains.ResumeProcessingStatus.FAILED: "❌",
+}
 
 
 @router.message(Command("resumes"))
@@ -31,7 +47,12 @@ async def resumes(
     user: dto.UserOutDTO,
     resume_service: services.ResumeService = Provide["resume_service"],
 ) -> None:
-    await _show_cv_list(message=message, user=user, page=1, resume_service=resume_service)
+    await _show_cv_list(
+        message=message,
+        user=user,
+        page=1,
+        resume_service=resume_service,
+    )
 
 
 @router.callback_query(F.data.startswith(_CV_PAGE_PREFIX))
@@ -55,8 +76,125 @@ async def cv_page(
 
 
 @router.callback_query(F.data.startswith(_CV_RESUME_PREFIX))
-async def cv_resume_select(callback: CallbackQuery) -> None:
+@inject
+async def cv_resume_select(
+    callback: CallbackQuery,
+    user: dto.UserOutDTO,
+    resume_service: services.ResumeService = Provide["resume_service"],
+    telegram_template: TelegramTemplate = Provide["telegram_template"],
+) -> None:
+    item_id = (callback.data or "")[len(_CV_RESUME_PREFIX) :]
     await callback.answer()
+
+    resume = await resume_service.get_by_pk(uuid.UUID(item_id))
+    if not resume:
+        if isinstance(callback.message, Message):
+            await callback.message.edit_text(_("Resume not found."))
+        return
+
+    lang = get_lang(callback.from_user)
+    text = telegram_template.render(
+        "resume/detail.html",
+        lang,
+        file_name=resume.file_name,
+        date_str=resume.created_at.strftime("%d.%m.%Y %H:%M"),
+        status_icon=_STATUS_LABELS.get(resume.status, ""),
+        status=resume.status.value,
+    )
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=_("⬇️ Download"),
+                    callback_data=f"{_CV_DOWNLOAD_PREFIX}{item_id}",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text=_("🗑 Delete"),
+                    callback_data=f"{_CV_DELETE_PREFIX}{item_id}",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text=_("⬅️ Back"),
+                    callback_data=f"{_CV_BACK_PREFIX}1",
+                ),
+            ],
+        ]
+    )
+
+    if isinstance(callback.message, Message):
+        await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith(_CV_BACK_PREFIX))
+@inject
+async def cv_back(
+    callback: CallbackQuery,
+    user: dto.UserOutDTO,
+    resume_service: services.ResumeService = Provide["resume_service"],
+) -> None:
+    page_str = (callback.data or "")[len(_CV_BACK_PREFIX) :]
+    page = int(page_str) if page_str.isdigit() else 1
+    await callback.answer()
+    if isinstance(callback.message, Message):
+        await _show_cv_list(
+            message=callback.message,
+            user=user,
+            page=page,
+            resume_service=resume_service,
+            edit=True,
+        )
+
+
+@router.callback_query(F.data.startswith(_CV_DOWNLOAD_PREFIX))
+@inject
+async def cv_download(
+    callback: CallbackQuery,
+    user: dto.UserOutDTO,
+    resume_service: services.ResumeService = Provide["resume_service"],
+) -> None:
+    item_id = (callback.data or "")[len(_CV_DOWNLOAD_PREFIX) :]
+    await callback.answer()
+
+    resume = await resume_service.get_by_pk(uuid.UUID(item_id))
+    if not resume:
+        if isinstance(callback.message, Message):
+            await callback.message.edit_text(_("Resume not found."))
+        return
+
+    if isinstance(callback.message, Message):
+        await callback.message.edit_text(_("Sending the document..."))
+
+    await download_resume.kiq(
+        int(user.messenger_id),
+        resume.object_name,
+        resume.file_name,
+    )
+
+
+@router.callback_query(F.data.startswith(_CV_DELETE_PREFIX))
+@inject
+async def cv_delete(
+    callback: CallbackQuery,
+    user: dto.UserOutDTO,
+    resume_service: services.ResumeService = Provide["resume_service"],
+) -> None:
+    item_id = (callback.data or "")[len(_CV_DELETE_PREFIX) :]
+    await callback.answer()
+
+    resume = await resume_service.get_by_pk(uuid.UUID(item_id))
+    if not resume:
+        if isinstance(callback.message, Message):
+            await callback.message.edit_text(_("Resume not found."))
+        return
+
+    await resume_service.delete(resume)
+
+    if isinstance(callback.message, Message):
+        await callback.message.edit_text(_("Resume deleted."))
 
 
 async def _show_cv_list(
@@ -68,11 +206,14 @@ async def _show_cv_list(
 ) -> None:
     resumes, total = await resume_service.get_user_resumes(
         user_id=user.id,
-        pagination=PageSizePagination(page_size=_CV_PAGE_SIZE, page=page),
+        pagination=PageSizePagination(
+            page_size=_CV_PAGE_SIZE,
+            page=page,
+        ),
     )
 
     if not resumes and page == 1:
-        text = _("You haven't uploaded any resumes yet. Use /start to upload one.")
+        text = _("You haven't uploaded any resumes yet. Use /resume to upload one.")
         if edit:
             await message.edit_text(text)
         else:
