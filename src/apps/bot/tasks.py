@@ -1,4 +1,9 @@
+import asyncio
+from contextlib import asynccontextmanager
+from typing import AsyncIterator
+
 from aiogram import Bot
+from aiogram.enums import ChatAction
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.exceptions import TelegramForbiddenError
 from aiogram.exceptions import TelegramNetworkError
@@ -14,10 +19,13 @@ from apps.worker.app import broker
 from core import domains
 from core import repos
 from core import services
+from core.errors.resumes import InvalidResumeError
 from infra.agents.cv_generator import CvGeneratorAgent
 from infra.agents.job_parser import JobParserAgent
-from infra.agents.renderer import ResumeRenderer
+from infra.agents.resume_parser import ResumeParser
+from infra.agents.schemas.job import JobParserError
 from infra.agents.schemas.resume import ResumePayload
+from infra.bot.template import ResumeRenderer
 from infra.bot.template import TelegramTemplate
 from infra.logger.utils import get_logger
 from utils.extractors import TextExtractorFactory
@@ -26,6 +34,41 @@ from utils.storages.impl.base import AsyncStorage
 from utils.transactions.manager import AsyncTransactionManager
 
 logger = get_logger(__name__)
+
+_CHAT_ACTION_INTERVAL = 4
+_PROCESS_RESUME_TIMEOUT = 300
+_PARSE_JOB_TIMEOUT = 300
+_GENERATE_CV_TIMEOUT = 600
+_SEND_CV_DOCUMENT_TIMEOUT = 120
+
+
+@asynccontextmanager
+async def _chat_action(
+    bot: Bot,
+    chat_id: int,
+    action: ChatAction = ChatAction.UPLOAD_DOCUMENT,
+    timeout: float = 300,
+) -> AsyncIterator[None]:
+    async def _loop() -> None:
+        deadline = asyncio.get_event_loop().time() + timeout
+        while asyncio.get_event_loop().time() < deadline:
+            try:
+                await bot.send_chat_action(chat_id=chat_id, action=action)
+            except Exception:  # noqa: S110
+                pass
+            await asyncio.sleep(_CHAT_ACTION_INTERVAL)
+
+    task = asyncio.create_task(_loop())
+
+    try:
+        yield
+    finally:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+
 
 _taskiq_context: Context = TaskiqDepends()  # type: ignore[assignment]
 
@@ -88,7 +131,9 @@ async def process_resume(
     user_service: services.UserService = Provide["user_service"],
     resume_service: services.ResumeService = Provide["resume_service"],
     resume_state_repo: repos.ResumeStateRepository = Provide["redis_resume_state_repo"],
+    resume_parser: ResumeParser = Provide["resume_parser"],
     transaction_manager: AsyncTransactionManager = Provide["async_transaction_manager_scoped"],
+    tg_bot: Bot = Closing[Provide["tg_bot_client"]],
     context: Context = _taskiq_context,
 ) -> None:
     log = logger.bind(
@@ -110,7 +155,11 @@ async def process_resume(
     retries = int(context.message.labels.get("_retries", 0))
     max_retries = int(context.message.labels.get("max_retries", 3))
 
-    async with transaction_manager:
+    async with (
+        transaction_manager,
+        _chat_action(tg_bot, tg_id, timeout=_PROCESS_RESUME_TIMEOUT),
+        asyncio.timeout(_PROCESS_RESUME_TIMEOUT),
+    ):
         try:
             await resume_service.update_record_status(
                 resume_id=domains.ResumeID(resume_id),
@@ -124,27 +173,57 @@ async def process_resume(
             resume_text = extractor.extract(file_data)
             log.info("Resume text extracted.", length=len(resume_text))
 
-            chunks = await resume_service.save_metadata(
+            parse_result = await resume_parser.parse(
+                resume_text=resume_text,
                 resume_id=domains.ResumeID(resume_id),
                 user_id=domains.UserID(user_id),
-                first_name=user.first_name,
-                last_name=user.last_name or "",
-                resume_text=resume_text,
             )
-            log.info("Resume saved to vector DB.", chunks_count=len(chunks))
+            log.info("Resume parsed by LLM.", title=parse_result.title)
 
-            title = domains.extract_title_from_resume_text(resume_text)
-            if title:
-                await resume_service.update_record_title(resume_id=domains.ResumeID(resume_id), title=title)
+            await resume_service.save_metadata(
+                resume_id=domains.ResumeID(resume_id),
+                chunks=parse_result.chunks,
+            )
+            log.info("Resume saved to vector DB.", chunks_count=len(parse_result.chunks))
+
+            if parse_result.title:
+                await resume_service.update_record_title(
+                    resume_id=domains.ResumeID(resume_id), title=parse_result.title
+                )
 
             await resume_service.update_record_status(
                 resume_id=domains.ResumeID(resume_id),
                 status=domains.ResumeProcessingStatus.DONE,
             )
 
-            text = telegram_template.render("resume/done.html", None)
+            text = telegram_template.render("resume/done.html", user.language_code)
             await send_tg_bot_message.kiq(tg_id, text)
             await resume_state_repo.clear_active(domains.UserID(user_id))
+        except InvalidResumeError:
+            log.warning("Uploaded file is not a valid resume.")
+            await resume_state_repo.clear_active(domains.UserID(user_id))
+
+            await resume_service.update_record_status(
+                resume_id=domains.ResumeID(resume_id),
+                status=domains.ResumeProcessingStatus.FAILED,
+            )
+
+            text = telegram_template.render("resume/invalid.html", user.language_code)
+            await send_tg_bot_message.kiq(tg_id, text)
+        except TimeoutError:
+            log.error("Resume processing timed out.")
+            await resume_state_repo.clear_active(domains.UserID(user_id))
+
+            try:
+                await resume_service.update_record_status(
+                    resume_id=domains.ResumeID(resume_id),
+                    status=domains.ResumeProcessingStatus.FAILED,
+                )
+            except Exception:
+                log.exception("Failed to update resume status to FAILED.")
+
+            text = telegram_template.render("resume/failed.html", user.language_code)
+            await send_tg_bot_message.kiq(tg_id, text)
         except Exception:
             log.exception("Resume processing failed.", attempt=retries + 1)
 
@@ -157,7 +236,7 @@ async def process_resume(
                 log.exception("Failed to update resume status to FAILED.")
 
             if retries + 1 >= max_retries:
-                text = telegram_template.render("resume/failed.html", None)
+                text = telegram_template.render("resume/failed.html", user.language_code)
                 await send_tg_bot_message.kiq(tg_id, text)
                 await resume_state_repo.clear_active(domains.UserID(user_id))
 
@@ -175,6 +254,7 @@ async def parse_job(
     job_service: services.JobService = Provide["job_service"],
     job_state_repo: repos.JobStateRepository = Provide["redis_job_state_repo"],
     transaction_manager: AsyncTransactionManager = Provide["async_transaction_manager_scoped"],
+    tg_bot: Bot = Closing[Provide["tg_bot_client"]],
     context: Context = _taskiq_context,
 ) -> None:
     log = logger.bind(
@@ -183,67 +263,124 @@ async def parse_job(
     )
     log.info("Starting vacancy parsing.")
 
-    async with transaction_manager:
-        user = await user_service.get_current_user(domains.UserID(user_id))
-        if user is None:
-            log.error("User not found.")
-            return
+    user = await user_service.get_current_user(domains.UserID(user_id))
+    if user is None:
+        log.error("User not found.")
+        return
 
-        tg_id = int(user.messenger_id)
-        log = log.bind(tg_id=tg_id)
+    tg_id = int(user.messenger_id)
+    log = log.bind(tg_id=tg_id)
 
-        existing_job = await job_service.find_existing_job(job_url)
-        if existing_job is not None:
-            log.info("Found existing job with same URL, copying.", source_job_id=str(existing_job.id))
-            try:
-                new_job = await job_service.copy_job_for_user(
-                    source_job=existing_job,
-                    user_id=domains.UserID(user_id),
-                    url=job_url,
+    async with (
+        transaction_manager,
+        _chat_action(tg_bot, tg_id, timeout=_PARSE_JOB_TIMEOUT),
+        asyncio.timeout(_PARSE_JOB_TIMEOUT),
+    ):
+        try:
+            existing_job = await job_service.find_existing_job(job_url)
+            if existing_job is not None:
+                log.info(
+                    "Found existing job with same URL, copying.",
+                    source_job_id=str(existing_job.id),
                 )
-                log.info("Job copied.", job_id=str(new_job.id))
-                text = telegram_template.render("job/parsed.html", None, job_title=new_job.title)
-                await send_tg_bot_message.kiq(tg_id, text)
+                try:
+                    new_job = await job_service.copy_job_for_user(
+                        existing_job,
+                        domains.UserID(user_id),
+                        job_url,
+                    )
+                    log.info(
+                        "Job copied.",
+                        job_id=str(new_job.id),
+                    )
+                    text = telegram_template.render(
+                        "job/parsed.html",
+                        user.language_code,
+                        job_title=new_job.title,
+                    )
+                    await send_tg_bot_message.kiq(tg_id, text)
+                except Exception:
+                    log.error("Failed to copy existing job.")
+                    await send_tg_bot_message.kiq(
+                        tg_id,
+                        _("Failed to parse the vacancy. Please try again later."),
+                    )
+                finally:
+                    await job_state_repo.clear_active(domains.UserID(user_id))
+                return
+
+            try:
+                thread_id = context.message.task_id
+                result = await job_parser_agent.run(
+                    thread_id=thread_id,
+                    job_reference=job_url,
+                )
             except Exception:
-                log.error("Failed to copy existing job.")
-                await send_tg_bot_message.kiq(tg_id, _("Failed to parse the vacancy. Please try again later."))
+                log.error("Vacancy parsing failed.")
+                await send_tg_bot_message.kiq(
+                    tg_id,
+                    _("Failed to parse the vacancy. Please try again later."),
+                )
+                return
             finally:
                 await job_state_repo.clear_active(user_id=domains.UserID(user_id))
-            return
 
-        try:
-            thread_id = context.message.task_id
-            result = await job_parser_agent.run(thread_id=thread_id, job_reference=job_url)
-        except Exception:
-            log.error("Vacancy parsing failed.")
-            await send_tg_bot_message.kiq(tg_id, _("Failed to parse the vacancy. Please try again later."))
-            return
-        finally:
+            if result.result is None:
+                log.error("Vacancy parsing returned no result.")
+                await send_tg_bot_message.kiq(
+                    tg_id,
+                    _("Failed to parse the vacancy. Please try again later."),
+                )
+                return
+
+            if result.error == JobParserError.NOT_A_JOB_POSTING:
+                log.warning("URL does not contain a job posting.")
+                text = telegram_template.render(
+                    "job/invalid.html",
+                    user.language_code,
+                )
+                await send_tg_bot_message.kiq(tg_id, text)
+                return
+
+            metadata = result.result.model_dump(exclude={"text"})
+            job_record = await job_service.create_record(
+                user_id=domains.UserID(user_id),
+                title=result.result.job_title,
+                url=job_url,
+                metadata_=metadata,
+            )
+            log.info("Job record created.", job_id=str(job_record.id))
+
+            chunks = JobParserAgent.chunk(
+                job_id=str(job_record.id),
+                user_id=user_id,
+                job_card=result.result,
+            )
+            await job_service.save_metadata(
+                job_id=job_record.id,
+                chunks=chunks,
+            )
+            log.info("Job metadata saved to vector DB.", chunks_count=len(chunks))
+
+            text = telegram_template.render("job/parsed.html", user.language_code, job_title=result.result.job_title)
+            await send_tg_bot_message.kiq(
+                tg_id,
+                text,
+            )
+        except TimeoutError:
+            log.error("Vacancy parsing timed out.")
             await job_state_repo.clear_active(user_id=domains.UserID(user_id))
-
-        if result.result is None:
-            log.error("Vacancy parsing returned no result.")
-            await send_tg_bot_message.kiq(tg_id, _("Failed to parse the vacancy. Please try again later."))
-            return
-
-        metadata = result.result.model_dump(exclude={"text"})
-        job_record = await job_service.create_record(
-            user_id=domains.UserID(user_id),
-            title=result.result.job_title,
-            url=job_url,
-            metadata_=metadata,
-        )
-        log.info("Job record created.", job_id=str(job_record.id))
-
-        chunks = await job_service.save_metadata(
-            job_id=job_record.id,
-            user_id=domains.UserID(user_id),
-            job_text=result.result.text,
-        )
-        log.info("Job metadata saved to vector DB.", chunks_count=len(chunks))
-
-        text = telegram_template.render("job/parsed.html", None, job_title=result.result.job_title)
-        await send_tg_bot_message.kiq(tg_id, text)
+            await send_tg_bot_message.kiq(
+                tg_id,
+                _("Failed to parse the vacancy. Please try again later."),
+            )
+        except Exception as err:
+            log.exception(err)
+            log.error("Vacancy parsing failed.")
+            await send_tg_bot_message.kiq(
+                tg_id,
+                _("Failed to parse the vacancy. Please try again later."),
+            )
 
 
 @broker.task(retry_on_error=True, max_retries=3)
@@ -256,6 +393,7 @@ async def generate_cv(
     cv_generator_agent: CvGeneratorAgent = Provide["cv_generator_agent"],
     user_service: services.UserService = Provide["user_service"],
     job_service: services.JobService = Provide["job_service"],
+    tg_bot: Bot = Closing[Provide["tg_bot_client"]],
     context: Context = _taskiq_context,
 ) -> None:
     log = logger.bind(
@@ -290,39 +428,47 @@ async def generate_cv(
     retries = int(context.message.labels.get("_retries", 0))
     max_retries = int(context.message.labels.get("max_retries", 3))
 
-    try:
-        thread_id = context.message.task_id
-        result = await cv_generator_agent.run(
-            thread_id=thread_id,
-            user_id=user_id,
-            job_text=job_text,
-            job_title=job_title,
-            job_id=job_id,
-            resume_id=resume_id,
-            template_json=template_json,
-        )
-    except Exception:
-        log.exception("CV generation failed.", attempt=retries + 1)
-        if retries + 1 >= max_retries:
+    async with (
+        _chat_action(tg_bot, tg_id, timeout=_GENERATE_CV_TIMEOUT),
+        asyncio.timeout(_GENERATE_CV_TIMEOUT),
+    ):
+        try:
+            thread_id = context.message.task_id
+            result = await cv_generator_agent.run(
+                thread_id=thread_id,
+                user_id=user_id,
+                job_text=job_text,
+                job_title=job_title,
+                job_id=job_id,
+                resume_id=resume_id,
+                template_json=template_json,
+            )
+        except TimeoutError:
+            log.error("CV generation timed out.")
             await send_tg_bot_message.kiq(tg_id, _("Failed to generate the CV. Please try again later."))
-        raise
+            return
+        except Exception:
+            log.exception("CV generation failed.", attempt=retries + 1)
+            if retries + 1 >= max_retries:
+                await send_tg_bot_message.kiq(tg_id, _("Failed to generate the CV. Please try again later."))
+            raise
 
-    if result.result is None:
-        log.error("CV generation returned no result.")
-        await send_tg_bot_message.kiq(tg_id, _("Failed to generate the CV. Please try again later."))
-        return
+        if result.result is None:
+            log.error("CV generation returned no result.")
+            await send_tg_bot_message.kiq(tg_id, _("Failed to generate the CV. Please try again later."))
+            return
 
-    log.info("CV generated successfully.")
+        log.info("CV generated successfully.")
 
-    await send_cv_document.kiq(
-        tg_id,
-        result.result.model_dump_json(),
-        user.language_code or "en",
-        job_title,
-        user_id,
-        resume_id,
-        job_id,
-    )
+        await send_cv_document.kiq(
+            tg_id,
+            result.result.model_dump_json(),
+            user.language_code or "en",
+            job_title,
+            user_id,
+            resume_id,
+            job_id,
+        )
 
 
 @broker.task(retry_on_error=True, max_retries=3)
@@ -346,27 +492,32 @@ async def send_cv_document(
     retries = int(context.message.labels.get("_retries", 0))
     max_retries = int(context.message.labels.get("max_retries", 3))
 
-    try:
-        payload = ResumePayload.model_validate_json(payload_json)
-        pdf_bytes = resume_renderer.render_pdf(payload, locale=locale)
-        filename = f"{payload.full_name} — {job_title}.pdf"
+    async with _chat_action(
+        tg_bot,
+        tg_id,
+        timeout=_SEND_CV_DOCUMENT_TIMEOUT,
+    ):
+        try:
+            payload = ResumePayload.model_validate_json(payload_json)
+            pdf_bytes = resume_renderer.render_pdf(payload, locale=locale)
+            filename = f"{payload.full_name} — {job_title}.pdf"
 
-        async with transaction_manager:
-            await generated_cv_service.save(
-                user_id=domains.UserID(user_id),
-                resume_id=domains.ResumeID(resume_id),
-                job_id=domains.JobID(job_id),
-                file_name=filename,
-                file_data=pdf_bytes,
-            )
+            async with transaction_manager:
+                await generated_cv_service.save(
+                    user_id=domains.UserID(user_id),
+                    resume_id=domains.ResumeID(resume_id),
+                    job_id=domains.JobID(job_id),
+                    file_name=filename,
+                    file_data=pdf_bytes,
+                )
 
-            document = BufferedInputFile(pdf_bytes, filename=filename)
-            await tg_bot.send_document(tg_id, document=document)
-    except Exception:
-        log.exception("Failed to send CV document.", attempt=retries + 1)
-        if retries + 1 >= max_retries:
-            await send_tg_bot_message.kiq(tg_id, _("Failed to send the CV document. Please try again later."))
-        raise
+                document = BufferedInputFile(pdf_bytes, filename=filename)
+                await tg_bot.send_document(tg_id, document=document)
+        except Exception:
+            log.exception("Failed to send CV document.", attempt=retries + 1)
+            if retries + 1 >= max_retries:
+                await send_tg_bot_message.kiq(tg_id, _("Failed to send the CV document. Please try again later."))
+            raise
 
 
 @broker.task(retry_on_error=True, max_retries=3)

@@ -425,73 +425,48 @@ class TestResumeServiceSaveMetadata:
         resume_metadata_repo: AsyncMock,
     ) -> None:
         resume_id = uuid.uuid4()
-        user_id = uuid.uuid4()
+        chunks = [
+            domains.ResumeChunk(
+                resume_id=str(resume_id),
+                user_id="u1",
+                section="full_resume",
+                content="text",
+                metadata={},
+            ),
+        ]
 
-        result = await resume_service.save_metadata(
-            resume_id=resume_id,
-            user_id=user_id,
-            first_name="John",
-            last_name="Doe",
-            resume_text="Some resume text",
-        )
+        await resume_service.save_metadata(resume_id=resume_id, chunks=chunks)
 
         resume_metadata_repo.ensure_collection.assert_awaited_once()
         resume_metadata_repo.delete_by_resume_id.assert_awaited_once_with(resume_id)
-        resume_metadata_repo.insert_chunks.assert_awaited_once()
-        assert len(result) > 0
-        assert all(isinstance(c, domains.ResumeChunk) for c in result)
+        resume_metadata_repo.insert_chunks.assert_awaited_once_with(chunks)
 
-    async def test_returns_chunks_with_correct_ids(
+    async def test_inserts_provided_chunks(
         self,
         resume_service: services.ResumeService,
         resume_metadata_repo: AsyncMock,
     ) -> None:
         resume_id = uuid.uuid4()
-        user_id = uuid.uuid4()
+        chunks = [
+            domains.ResumeChunk(
+                resume_id=str(resume_id),
+                user_id="u1",
+                section="about",
+                content="about text",
+                metadata={"section": "about"},
+            ),
+            domains.ResumeChunk(
+                resume_id=str(resume_id),
+                user_id="u1",
+                section="skills",
+                content="Python, Go",
+                metadata={"section": "skills"},
+            ),
+        ]
 
-        result = await resume_service.save_metadata(
-            resume_id=resume_id,
-            user_id=user_id,
-            first_name="Jane",
-            last_name="Smith",
-            resume_text="Resume content",
-        )
+        await resume_service.save_metadata(resume_id=resume_id, chunks=chunks)
 
-        for chunk in result:
-            assert chunk.resume_id == str(resume_id)
-            assert chunk.user_id == str(user_id)
-
-    async def test_always_includes_full_resume_section(
-        self,
-        resume_service: services.ResumeService,
-        resume_metadata_repo: AsyncMock,
-    ) -> None:
-        result = await resume_service.save_metadata(
-            resume_id=uuid.uuid4(),
-            user_id=uuid.uuid4(),
-            first_name="A",
-            last_name="B",
-            resume_text="Any text",
-        )
-
-        sections = [c.section for c in result]
-        assert "full_resume" in sections
-
-    async def test_inserts_same_chunks_returned(
-        self,
-        resume_service: services.ResumeService,
-        resume_metadata_repo: AsyncMock,
-    ) -> None:
-        result = await resume_service.save_metadata(
-            resume_id=uuid.uuid4(),
-            user_id=uuid.uuid4(),
-            first_name="A",
-            last_name="B",
-            resume_text="Description here",
-        )
-
-        inserted_chunks = resume_metadata_repo.insert_chunks.call_args[0][0]
-        assert inserted_chunks == result
+        resume_metadata_repo.insert_chunks.assert_awaited_once_with(chunks)
 
 
 class TestResumeServiceSearchByText:

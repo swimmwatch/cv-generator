@@ -1,4 +1,6 @@
+from aiogram import F
 from aiogram import Router
+from aiogram.enums import ContentType
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
@@ -63,7 +65,14 @@ async def job_already_processing(message: Message) -> None:
     )
 
 
-@router.message(JobStates.waiting_for_url)
+@router.message(JobStates.waiting_for_url, Command("cancel"))
+async def job_cancel(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    await send_response(message, _("Job posting upload has been cancelled."))
+
+
+@router.message(JobStates.waiting_for_url, F.content_type != ContentType.TEXT)
+@router.message(JobStates.waiting_for_url, F.text, ~F.text.startswith("/"))
 @inject
 async def job_url_input(
     message: Message,
@@ -101,5 +110,6 @@ async def job_url_input(
 
     await state.clear()
     await job_state_repo.set_active(user_id=user.id)
+
     await send_response(message, _("Parsing the vacancy. Please wait..."))
     await parse_job.kiq(user_id=str(user.id), job_url=url)

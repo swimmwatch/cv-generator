@@ -258,60 +258,90 @@ class TestJobServiceSaveMetadata:
         job_metadata_repo: AsyncMock,
     ) -> None:
         job_id = uuid.uuid4()
-        user_id = uuid.uuid4()
+        chunks = [
+            domains.JobChunk(
+                job_id=str(job_id),
+                user_id="user-1",
+                section="full_job",
+                content="Some job description",
+                metadata={"job_id": str(job_id), "user_id": "user-1"},
+            ),
+        ]
 
         result = await job_service.save_metadata(
             job_id=job_id,
-            user_id=user_id,
-            job_text="Some job description",
+            chunks=chunks,
         )
 
         job_metadata_repo.delete_by_job_id.assert_awaited_once_with(job_id)
-        job_metadata_repo.insert_chunks.assert_awaited_once()
-        assert len(result) > 0
-        assert all(isinstance(c, domains.JobChunk) for c in result)
+        job_metadata_repo.insert_chunks.assert_awaited_once_with(chunks)
+        assert result == chunks
 
-    async def test_returns_chunks_with_correct_ids(
+    async def test_returns_chunks_as_passed(
         self,
         job_service: services.JobService,
         job_metadata_repo: AsyncMock,
     ) -> None:
         job_id = uuid.uuid4()
         user_id = uuid.uuid4()
+        chunks = [
+            domains.JobChunk(
+                job_id=str(job_id),
+                user_id=str(user_id),
+                section="full_job",
+                content="Job text content",
+                metadata={"job_id": str(job_id), "user_id": str(user_id)},
+            ),
+            domains.JobChunk(
+                job_id=str(job_id),
+                user_id=str(user_id),
+                section="summary",
+                content="A summary",
+                metadata={"job_id": str(job_id), "user_id": str(user_id), "section": "summary"},
+            ),
+        ]
 
         result = await job_service.save_metadata(
             job_id=job_id,
-            user_id=user_id,
-            job_text="Job text content",
+            chunks=chunks,
         )
 
+        assert result == chunks
         for chunk in result:
             assert chunk.job_id == str(job_id)
             assert chunk.user_id == str(user_id)
 
-    async def test_always_includes_full_job_section(
+    async def test_ensures_collection(
         self,
         job_service: services.JobService,
         job_metadata_repo: AsyncMock,
     ) -> None:
-        result = await job_service.save_metadata(
+        await job_service.save_metadata(
             job_id=uuid.uuid4(),
-            user_id=uuid.uuid4(),
-            job_text="Any text",
+            chunks=[],
         )
 
-        sections = [c.section for c in result]
-        assert "full_job" in sections
+        job_metadata_repo.ensure_collection.assert_awaited_once()
 
     async def test_inserts_same_chunks_returned(
         self,
         job_service: services.JobService,
         job_metadata_repo: AsyncMock,
     ) -> None:
+        job_id = uuid.uuid4()
+        chunks = [
+            domains.JobChunk(
+                job_id=str(job_id),
+                user_id="user-1",
+                section="full_job",
+                content="Description here",
+                metadata={"job_id": str(job_id), "user_id": "user-1"},
+            ),
+        ]
+
         result = await job_service.save_metadata(
-            job_id=uuid.uuid4(),
-            user_id=uuid.uuid4(),
-            job_text="Description here",
+            job_id=job_id,
+            chunks=chunks,
         )
 
         inserted_chunks = job_metadata_repo.insert_chunks.call_args[0][0]
@@ -526,7 +556,16 @@ class TestJobServiceCopyJobForUser:
             url="https://example.com/jobs/1",
             metadata_={"skills": ["python"]},
         )
-        job_metadata_repo.get_full_text_by_job_id.return_value = "Full job text"
+        source_chunks = [
+            domains.JobChunk(
+                job_id=str(source.id),
+                user_id=str(user1.id),
+                section="full_job",
+                content="Full job text",
+                metadata={"job_id": str(source.id), "user_id": str(user1.id)},
+            ),
+        ]
+        job_metadata_repo.get_chunks_by_job_id.return_value = source_chunks
 
         new_job = await job_service.copy_job_for_user(
             source_job=source,
@@ -538,10 +577,10 @@ class TestJobServiceCopyJobForUser:
         assert new_job.user_id == user2.id
         assert new_job.title == "Senior Dev"
         assert new_job.metadata_ == {"skills": ["python"]}
-        job_metadata_repo.get_full_text_by_job_id.assert_awaited_once_with(source.id)
+        job_metadata_repo.get_chunks_by_job_id.assert_awaited_once_with(source.id)
         job_metadata_repo.insert_chunks.assert_awaited_once()
 
-    async def test_copies_without_metadata_when_no_full_text(
+    async def test_copies_without_metadata_when_no_chunks(
         self,
         job_service: services.JobService,
         job_metadata_repo: AsyncMock,
@@ -555,7 +594,7 @@ class TestJobServiceCopyJobForUser:
             title="Dev",
             url="https://example.com/jobs/2",
         )
-        job_metadata_repo.get_full_text_by_job_id.return_value = None
+        job_metadata_repo.get_chunks_by_job_id.return_value = []
 
         new_job = await job_service.copy_job_for_user(
             source_job=source,

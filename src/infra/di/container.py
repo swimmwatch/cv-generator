@@ -12,7 +12,8 @@ from core import services
 from infra.agents.chat import ChatAgent
 from infra.agents.cv_generator import CvGeneratorAgent
 from infra.agents.job_parser import JobParserAgent
-from infra.agents.renderer import ResumeRenderer
+from infra.agents.resume_parser import ResumeParser
+from infra.bot.template import ResumeRenderer
 from infra.bot.template import TelegramTemplate
 from infra.config import Settings
 from infra.db.client import AsyncDatabase
@@ -197,6 +198,19 @@ class Container(DeclarativeContainer):
     )
 
     # Agents
+    resume_parser = providers.Factory(
+        ResumeParser,
+        model_name=config.agents.resume_parser.model_name,
+        model_token=providers.Callable(
+            lambda secret: secret.get_secret_value(),
+            config.agents.resume_parser.model_token,
+        ),
+        temperature=config.agents.resume_parser.temperature,
+        max_tokens=config.agents.resume_parser.max_tokens,
+        timeout=config.agents.resume_parser.timeout,
+        top_p=config.agents.resume_parser.top_p,
+        reasoning_effort=config.agents.resume_parser.reasoning_effort,
+    )
     agent_checkpointer = providers.Resource(
         init_agent_checkpointer,
         redis_url=config.redis.checkpoint_url,
@@ -205,26 +219,29 @@ class Container(DeclarativeContainer):
     mcp_proxy_headers = providers.Dict(
         Authorization=providers.Callable(
             lambda secret: f"Bearer {secret.get_secret_value()}",
-            config.agents.mcp_proxy_auth_token,
+            config.agents.mcp.proxy_auth_token,
         ),
     )
     job_parser_agent = providers.Factory(
         JobParserAgent,
-        model_name=config.agents.model_name,
+        model_name=config.agents.job_parser.model_name,
         model_token=providers.Callable(
             lambda secret: secret.get_secret_value(),
-            config.agents.model_token,
+            config.agents.job_parser.model_token,
         ),
-        mcp_proxy_url=config.agents.mcp_proxy_url,
+        mcp_proxy_url=config.agents.mcp.proxy_url,
         mcp_headers=mcp_proxy_headers,
+        max_tokens=config.agents.job_parser.max_tokens,
+        timeout=config.agents.job_parser.timeout,
+        reasoning_effort=config.agents.job_parser.reasoning_effort,
         checkpointer=agent_checkpointer,
     )
     cv_generator_agent = providers.Factory(
         CvGeneratorAgent,
-        model_name=config.agents.model_name,
+        model_name=config.agents.cv_generator.model_name,
         model_token=providers.Callable(
             lambda secret: secret.get_secret_value(),
-            config.agents.model_token,
+            config.agents.cv_generator.model_token,
         ),
         resume_metadata_repo=weaviate_resume_metadata_repo,
         job_metadata_repo=weaviate_job_metadata_repo,
@@ -232,10 +249,10 @@ class Container(DeclarativeContainer):
     )
     chat_agent = providers.Factory(
         ChatAgent,
-        model_name=config.agents.model_name,
+        model_name=config.agents.chat.model_name,
         model_token=providers.Callable(
             lambda secret: secret.get_secret_value(),
-            config.agents.model_token,
+            config.agents.chat.model_token,
         ),
         resume_metadata_repo=weaviate_resume_metadata_repo,
         job_metadata_repo=weaviate_job_metadata_repo,

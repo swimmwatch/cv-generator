@@ -18,6 +18,9 @@ class JobMetadataRepository(typing.Protocol):
     async def get_full_text_by_job_id(self, job_id: uuid.UUID) -> str | None:
         pass
 
+    async def get_chunks_by_job_id(self, job_id: uuid.UUID) -> list[domains.JobChunk]:
+        pass
+
     async def search_by_text(
         self,
         query: str,
@@ -51,6 +54,9 @@ class WeaviateJobMetadataRepository:
 
     async def get_full_text_by_job_id(self, job_id: uuid.UUID) -> str | None:
         return await self._dal.get_full_text_by_job_id(str(job_id))
+
+    async def get_chunks_by_job_id(self, job_id: uuid.UUID) -> list[domains.JobChunk]:
+        return await self._dal.get_chunks_by_job_id(str(job_id))
 
     async def search_by_text(
         self,

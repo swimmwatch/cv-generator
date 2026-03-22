@@ -1,6 +1,8 @@
 import io
 
+from aiogram import F
 from aiogram import Router
+from aiogram.enums import ContentType
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
@@ -25,6 +27,8 @@ from ..utils import send_response
 router = Router(name=__name__)
 
 _ALLOWED_EXTENSIONS = set(EXTRACTORS.keys())
+_MAX_FILE_SIZE_MB = 10
+_MAX_FILE_SIZE_BYTES = _MAX_FILE_SIZE_MB * 1024 * 1024
 
 
 @router.message(
@@ -45,7 +49,10 @@ async def resume(
     await send_response(message, text)
 
 
-@router.message(Command("resume"), NoActiveResumeProcessingFilter())
+@router.message(
+    Command("resume"),
+    NoActiveResumeProcessingFilter(),
+)
 @inject
 async def resume_insufficient_credits(
     message: Message,
@@ -70,7 +77,14 @@ async def resume_already_processing(message: Message) -> None:
     )
 
 
-@router.message(ResumeUploadStates.waiting_for_file)
+@router.message(ResumeUploadStates.waiting_for_file, Command("cancel"))
+async def resume_cancel(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    await send_response(message, _("Resume upload has been cancelled."))
+
+
+@router.message(ResumeUploadStates.waiting_for_file, F.content_type != ContentType.TEXT)
+@router.message(ResumeUploadStates.waiting_for_file, F.text, ~F.text.startswith("/"))
 @inject
 async def resume_file_input(
     message: Message,
@@ -96,6 +110,20 @@ async def resume_file_input(
         await send_response(message, text)
         return
 
+    file_size = message.document.file_size or 0
+    if file_size > _MAX_FILE_SIZE_BYTES:
+        lang = get_lang(message.from_user)
+        text = telegram_template.render("resume/too_large.html", lang, max_size=_MAX_FILE_SIZE_MB)
+        await send_response(message, text)
+        return
+
+    if await resume_state_repo.is_active(user.id):
+        await send_response(
+            message,
+            _("You already have a resume being processed. Please wait for it to finish."),
+        )
+        return
+
     if not message.bot:
         return
 
@@ -119,8 +147,6 @@ async def resume_file_input(
         object_name=object_name,
         file_name=file_name,
     )
-
-    await state.clear()
 
     if not user.is_superuser:
         deducted = await user_service.deduct_credits(

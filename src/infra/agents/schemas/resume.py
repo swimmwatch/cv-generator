@@ -28,8 +28,12 @@ class ResumeEducation(BaseModel):
 
 
 class ResumePayload(BaseModel):
-    full_name: str = Field(description="Full name of the candidate")
-    title: str = Field(description="Professional title, tailored to the target vacancy")
+    is_resume: bool = Field(
+        description="True if the text is a real resume/CV. "
+        "False if it is unrelated content (recipe, article, gibberish, etc.)."
+    )
+    full_name: str = Field(default="", description="Full name of the candidate")
+    title: str = Field(default="", description="Professional title, tailored to the target vacancy")
     contacts: ResumeContacts = Field(default_factory=ResumeContacts, description="Contact information")
     about: str = Field(
         description="Professional summary tailored to the vacancy. "

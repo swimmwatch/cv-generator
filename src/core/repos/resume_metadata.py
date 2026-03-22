@@ -18,6 +18,9 @@ class ResumeMetadataRepository(typing.Protocol):
     async def insert_chunks(self, chunks: list[domains.ResumeChunk]) -> None:
         pass
 
+    async def get_chunks_by_resume_id(self, resume_id: uuid.UUID) -> list[str]:
+        pass
+
     async def search_by_text(
         self,
         query: str,
@@ -51,6 +54,9 @@ class WeaviateResumeMetadataRepository:
 
     async def insert_chunks(self, chunks: list[domains.ResumeChunk]) -> None:
         await self._dal.insert_chunks(chunks)
+
+    async def get_chunks_by_resume_id(self, resume_id: uuid.UUID) -> list[str]:
+        return await self._dal.get_chunks_by_resume_id(str(resume_id))
 
     async def search_by_text(
         self,

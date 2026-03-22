@@ -7,7 +7,8 @@ from .commands import register
 
 
 @click.group()
-async def cli() -> None:
+@click.pass_context
+async def cli(ctx: click.Context) -> None:
     """Management commands."""
     container = Container()
     container.wire(
@@ -25,6 +26,13 @@ async def cli() -> None:
 
     container.async_db()  # Initialize the database connection
     container.init_resources()
+
+    async def _shutdown() -> None:
+        redis_client = container.redis_client()
+        await redis_client.aclose()  # type: ignore[attr-defined]
+        await container.shutdown_resources()  # type: ignore[misc]
+
+    ctx.call_on_close(_shutdown)
 
 
 register(cli)

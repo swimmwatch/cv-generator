@@ -77,26 +77,30 @@ class JobService:
             url=url,
             metadata_=source_job.metadata_,
         )
-        full_text = await self.get_full_text(source_job.id)
-        if full_text:
+        source_chunks = await self._job_metadata_repo.get_chunks_by_job_id(source_job.id)
+        if source_chunks:
+            copied_chunks = [
+                domains.JobChunk(
+                    job_id=str(new_job.id),
+                    user_id=str(user_id),
+                    section=chunk.section,
+                    content=chunk.content,
+                    metadata={**chunk.metadata, "job_id": str(new_job.id), "user_id": str(user_id)},
+                )
+                for chunk in source_chunks
+            ]
             await self.save_metadata(
                 job_id=new_job.id,
-                user_id=user_id,
-                job_text=full_text,
+                chunks=copied_chunks,
             )
         return new_job
 
     async def save_metadata(
         self,
         job_id: domains.JobID,
-        user_id: domains.UserID,
-        job_text: str,
+        chunks: list[domains.JobChunk],
     ) -> list[domains.JobChunk]:
-        chunks = domains.chunk_job(
-            job_id=job_id,
-            user_id=user_id,
-            job_text=job_text,
-        )
+        await self._job_metadata_repo.ensure_collection()
         await self._job_metadata_repo.delete_by_job_id(job_id)
         await self._job_metadata_repo.insert_chunks(chunks)
         return chunks

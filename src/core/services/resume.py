@@ -79,22 +79,11 @@ class ResumeService:
     async def save_metadata(
         self,
         resume_id: uuid.UUID,
-        user_id: domains.UserID,
-        first_name: str,
-        last_name: str,
-        resume_text: str,
-    ) -> list[domains.ResumeChunk]:
-        chunks = domains.chunk_resume(
-            resume_id=resume_id,
-            user_id=user_id,
-            first_name=first_name,
-            last_name=last_name,
-            resume_text=resume_text,
-        )
+        chunks: list[domains.ResumeChunk],
+    ) -> None:
         await self._resume_metadata_repo.ensure_collection()
         await self._resume_metadata_repo.delete_by_resume_id(resume_id)
         await self._resume_metadata_repo.insert_chunks(chunks)
-        return chunks
 
     async def search_by_text(
         self,
