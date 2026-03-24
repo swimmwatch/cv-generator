@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-03-08 19:21+0300\n"
+"POT-Creation-Date: 2026-03-22 23:37+0300\n"
 "PO-Revision-Date: 2024-05-05 14:24+0300\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: en\n"
@@ -18,17 +18,241 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: src/apps/bot/handlers.py:59
-msgid "Please upload a file in PDF or DOCX format."
+#: src/apps/bot/tasks.py:306 src/apps/bot/tasks.py:322
+#: src/apps/bot/tasks.py:332 src/apps/bot/tasks.py:375
+#: src/apps/bot/tasks.py:382
+msgid "Failed to parse the vacancy. Please try again later."
 msgstr ""
 
-#: src/apps/bot/handlers.py:72
+#: src/apps/bot/tasks.py:416 src/apps/bot/tasks.py:422
+#: src/apps/bot/tasks.py:448 src/apps/bot/tasks.py:453
+#: src/apps/bot/tasks.py:458
+msgid "Failed to generate the CV. Please try again later."
+msgstr ""
+
+#: src/apps/bot/tasks.py:519 src/apps/bot/tasks.py:545
+msgid "Failed to send the CV document. Please try again later."
+msgstr ""
+
+#: src/apps/bot/tasks.py:571
+msgid "Failed to send the resume document. Please try again later."
+msgstr ""
+
+#: src/apps/bot/handlers/balance.py:27
+msgid "Chat message"
+msgstr ""
+
+#: src/apps/bot/handlers/balance.py:28
+msgid "Resume upload"
+msgstr ""
+
+#: src/apps/bot/handlers/balance.py:29
+msgid "Job posting"
+msgstr ""
+
+#: src/apps/bot/handlers/balance.py:30
+msgid "CV generation"
+msgstr ""
+
+#: src/apps/bot/handlers/chat.py:98
+msgid "You don't have any saved vacancies yet. Use /job to add one before starting a chat."
+msgstr ""
+
+#: src/apps/bot/handlers/chat.py:106
+msgid "You don't have any processed resumes yet. Use /resume to upload a resume before starting a chat."
+msgstr ""
+
+#: src/apps/bot/handlers/chat.py:115
+msgid "To start a chat, you need a resume and a job posting. Use /resume to upload a resume and /job to add a job posting."
+msgstr ""
+
+#: src/apps/bot/handlers/chat.py:195
+msgid "You can now ask questions. Send /cancel to exit the chat."
+msgstr ""
+
+#: src/apps/bot/handlers/chat.py:203
+msgid "Chat ended."
+msgstr ""
+
+#: src/apps/bot/handlers/chat.py:226
+msgid "Please send a text message."
+msgstr ""
+
+#: src/apps/bot/handlers/chat.py:242
+msgid "Something went wrong. Please try /chat again."
+msgstr ""
+
+#: src/apps/bot/handlers/chat.py:348
+msgid "To stop the chat, use /cancel"
+msgstr ""
+
+#: src/apps/bot/handlers/chat.py:353
+msgid "No data found. Please upload documents first."
+msgstr ""
+
+#: src/apps/bot/handlers/chat.py:357
+msgid "An error occurred while generating a response. Please try again."
+msgstr ""
+
+#: src/apps/bot/handlers/chat.py:390
+msgid "Please wait for the previous response to finish before sending a new message."
+msgstr ""
+
+#: src/apps/bot/handlers/chat.py:408 src/apps/bot/handlers/generate.py:206
+#: src/apps/bot/handlers/resumes.py:216
+msgid "You haven't uploaded any resumes yet. Use /resume to upload one."
+msgstr ""
+
+#: src/apps/bot/handlers/chat.py:434
 #, python-format
-msgid "Invalid file format. Please upload your resume in one of the following formats: %s"
+msgid "Select a resume for chat (page %d of %d):"
 msgstr ""
 
-#: src/apps/bot/handlers.py:113
+#: src/apps/bot/handlers/chat.py:455 src/apps/bot/handlers/generate.py:253
+#: src/apps/bot/handlers/jobs.py:170
+msgid "You don't have any saved vacancies yet. Use /job to parse one."
+msgstr ""
+
+#: src/apps/bot/handlers/chat.py:480
+#, python-format
+msgid "Select a vacancy for chat (page %d of %d):"
+msgstr ""
+
+#: src/apps/bot/handlers/cv.py:80 src/apps/bot/handlers/cv.py:150
+msgid "Generated CV not found."
+msgstr ""
+
+#: src/apps/bot/handlers/cv.py:100 src/apps/bot/handlers/resumes.py:109
+msgid "⬇️ Download"
+msgstr ""
+
+#: src/apps/bot/handlers/cv.py:106 src/apps/bot/handlers/jobs.py:104
+#: src/apps/bot/handlers/resumes.py:121
+msgid "⬅️ Back"
+msgstr ""
+
+#: src/apps/bot/handlers/cv.py:154 src/apps/bot/handlers/resumes.py:169
+msgid "Sending the document..."
+msgstr ""
+
+#: src/apps/bot/handlers/cv.py:176
+msgid "You don't have any generated CVs yet. Use /generate to create one."
+msgstr ""
+
+#: src/apps/bot/handlers/cv.py:202
+#, python-format
+msgid "Generated CVs (page %d of %d):"
+msgstr ""
+
+#: src/apps/bot/handlers/fallback.py:24
 msgid "Ops! I don't know what I can do."
+msgstr ""
+
+#: src/apps/bot/handlers/generate.py:75
+msgid "You don't have any processed resumes yet. Please upload a resume first using /resumes."
+msgstr ""
+
+#: src/apps/bot/handlers/generate.py:158
+msgid "Something went wrong. Please try /generate again."
+msgstr ""
+
+#: src/apps/bot/handlers/generate.py:182
+msgid "Generating CV. Please wait..."
+msgstr ""
+
+#: src/apps/bot/handlers/generate.py:232
+#, python-format
+msgid "Select a resume for CV generation (page %d of %d):"
+msgstr ""
+
+#: src/apps/bot/handlers/generate.py:278
+#, python-format
+msgid "Select a vacancy for CV generation (page %d of %d):"
+msgstr ""
+
+#: src/apps/bot/handlers/job.py:40
+msgid "Please send a link to the job posting."
+msgstr ""
+
+#: src/apps/bot/handlers/job.py:64
+msgid "You already have a job parsing in progress. Please wait for it to finish."
+msgstr ""
+
+#: src/apps/bot/handlers/job.py:71
+msgid "Job posting upload has been cancelled."
+msgstr ""
+
+#: src/apps/bot/handlers/job.py:88
+msgid "Please send a valid link starting with http:// or https://"
+msgstr ""
+
+#: src/apps/bot/handlers/job.py:92
+msgid "The link is not available. Please check the URL and try again."
+msgstr ""
+
+#: src/apps/bot/handlers/job.py:114
+msgid "Parsing the vacancy. Please wait..."
+msgstr ""
+
+#: src/apps/bot/handlers/jobs.py:82 src/apps/bot/handlers/jobs.py:148
+msgid "Vacancy not found."
+msgstr ""
+
+#: src/apps/bot/handlers/jobs.py:98 src/apps/bot/handlers/resumes.py:115
+msgid "🗑 Delete"
+msgstr ""
+
+#: src/apps/bot/handlers/jobs.py:154
+msgid "Vacancy deleted."
+msgstr ""
+
+#: src/apps/bot/handlers/jobs.py:195
+#, python-format
+msgid "Your vacancies (page %d of %d):"
+msgstr ""
+
+#: src/apps/bot/handlers/resume.py:76 src/apps/bot/handlers/resume.py:123
+msgid "You already have a resume being processed. Please wait for it to finish."
+msgstr ""
+
+#: src/apps/bot/handlers/resume.py:83
+msgid "Resume upload has been cancelled."
+msgstr ""
+
+#: src/apps/bot/handlers/resume.py:132
+msgid "Failed to download the file. Please try again."
+msgstr ""
+
+#: src/apps/bot/handlers/resumes.py:92 src/apps/bot/handlers/resumes.py:165
+#: src/apps/bot/handlers/resumes.py:191
+msgid "Resume not found."
+msgstr ""
+
+#: src/apps/bot/handlers/resumes.py:197
+msgid "Resume deleted."
+msgstr ""
+
+#: src/apps/bot/handlers/resumes.py:242
+#, python-format
+msgid "Your resumes (page %d of %d):"
+msgstr ""
+
+#: src/apps/bot/handlers/topup.py:42 src/apps/bot/handlers/topup.py:79
+#: src/infra/bot/templates/balance/info.html:1
+msgid "credits"
+msgstr ""
+
+#: src/apps/bot/handlers/topup.py:63
+msgid "Invalid option."
+msgstr ""
+
+#: src/apps/bot/handlers/topup.py:80
+#, python-format
+msgid "Purchase %d credits for your account."
+msgstr ""
+
+#: src/apps/bot/handlers/topup.py:95 src/apps/bot/handlers/topup.py:102
+msgid "Invalid payment."
 msgstr ""
 
 #: src/infra/bot/templates/greet.html:1
@@ -36,11 +260,51 @@ msgid "Hello! I'm a"
 msgstr ""
 
 #: src/infra/bot/templates/greet.html:2
-msgid "I create a resume tailored for a specific job opening."
+msgid "I tailor your resume to any job posting using AI."
 msgstr ""
 
-#: src/infra/bot/templates/greet.html:3
-msgid "You upload your resume, then specify the job opening, and a resume will be generated for that opening."
+#: src/infra/bot/templates/greet.html:5
+msgid "The bot uses a credit system. You start with 10 free credits. Each action costs 1 credit: uploading a resume, saving a job, generating a CV."
+msgstr ""
+
+#: src/infra/bot/templates/greet.html:8
+msgid "Available commands:"
+msgstr ""
+
+#: src/infra/bot/templates/greet.html:10
+msgid "upload a new resume"
+msgstr ""
+
+#: src/infra/bot/templates/greet.html:12
+msgid "manage your uploaded resumes"
+msgstr ""
+
+#: src/infra/bot/templates/greet.html:14
+msgid "add a job posting by URL"
+msgstr ""
+
+#: src/infra/bot/templates/greet.html:16
+msgid "view saved job postings"
+msgstr ""
+
+#: src/infra/bot/templates/greet.html:18
+msgid "generate a tailored CV for a job posting"
+msgstr ""
+
+#: src/infra/bot/templates/greet.html:20
+msgid "view generated CVs"
+msgstr ""
+
+#: src/infra/bot/templates/greet.html:22
+msgid "chat with your resume or job posting"
+msgstr ""
+
+#: src/infra/bot/templates/greet.html:24
+msgid "check your credit balance"
+msgstr ""
+
+#: src/infra/bot/templates/greet.html:26
+msgid "buy more credits"
 msgstr ""
 
 #: src/infra/bot/templates/admin/approved.html:3
@@ -148,24 +412,171 @@ msgstr ""
 msgid "No users."
 msgstr ""
 
+#: src/infra/bot/templates/balance/info.html:1
+msgid "Your balance:"
+msgstr ""
+
+#: src/infra/bot/templates/balance/info.html:4
+msgid "Credit costs:"
+msgstr ""
+
+#: src/infra/bot/templates/balance/info.html:7
+#: src/infra/bot/templates/balance/insufficient.html:1
+msgid "cr."
+msgstr ""
+
+#: src/infra/bot/templates/balance/info.html:10
+#: src/infra/bot/templates/balance/insufficient.html:3
+msgid "Use /topup to add more credits."
+msgstr ""
+
+#: src/infra/bot/templates/balance/insufficient.html:1
+msgid "Insufficient credits."
+msgstr ""
+
+#: src/infra/bot/templates/balance/insufficient.html:1
+msgid "This action costs"
+msgstr ""
+
+#: src/infra/bot/templates/balance/insufficient.html:1
+msgid "cr., your balance:"
+msgstr ""
+
+#: src/infra/bot/templates/balance/topup.html:1
+msgid "Choose a credit pack to purchase:"
+msgstr ""
+
+#: src/infra/bot/templates/balance/topup_success.html:1
+msgid "Payment successful! Added"
+msgstr ""
+
+#: src/infra/bot/templates/balance/topup_success.html:1
+#: src/infra/bot/templates/balance/topup_success.html:3
+msgid "credits."
+msgstr ""
+
+#: src/infra/bot/templates/balance/topup_success.html:3
+msgid "Your new balance:"
+msgstr ""
+
+#: src/infra/bot/templates/cv/index.html:15
+msgid "E-mail:"
+msgstr ""
+
+#: src/infra/bot/templates/cv/index.html:18
+msgid "Phone:"
+msgstr ""
+
+#: src/infra/bot/templates/cv/index.html:21
+msgid "Telegram:"
+msgstr ""
+
+#: src/infra/bot/templates/cv/index.html:31
+msgid "About Me"
+msgstr ""
+
+#: src/infra/bot/templates/cv/index.html:40
+msgid "Skills"
+msgstr ""
+
+#: src/infra/bot/templates/cv/index.html:55
+msgid "Work Experience"
+msgstr ""
+
+#: src/infra/bot/templates/cv/index.html:59
+msgid "at"
+msgstr ""
+
+#: src/infra/bot/templates/cv/index.html:80
+#: src/infra/bot/templates/cv/index.html:82
+#: src/infra/bot/templates/cv/index.html:101
+#: src/infra/bot/templates/cv/index.html:103
+msgid "Stack:"
+msgstr ""
+
+#: src/infra/bot/templates/cv/index.html:90
+msgid "Experience before professional development:"
+msgstr ""
+
+#: src/infra/bot/templates/cv/index.html:117
+msgid "Education"
+msgstr ""
+
 #: src/infra/bot/templates/error/base.html:1
 msgid "Error!"
 msgstr ""
 
+#: src/infra/bot/templates/generated_cv/detail.html:1
+msgid "Generated CV"
+msgstr ""
+
+#: src/infra/bot/templates/generated_cv/detail.html:4
+#: src/infra/bot/templates/generated_cv/detail.html:6
+msgid "Vacancy"
+msgstr ""
+
+#: src/infra/bot/templates/generated_cv/detail.html:6
+#: src/infra/bot/templates/generated_cv/detail.html:8
+msgid "deleted"
+msgstr ""
+
+#: src/infra/bot/templates/generated_cv/detail.html:8
+msgid "Resume"
+msgstr ""
+
+#: src/infra/bot/templates/generated_cv/detail.html:9
+#: src/infra/bot/templates/job/detail.html:5
+#: src/infra/bot/templates/resume/detail.html:2
+msgid "Date"
+msgstr ""
+
+#: src/infra/bot/templates/job/detail.html:1
+msgid "Title"
+msgstr ""
+
+#: src/infra/bot/templates/job/detail.html:3
+msgid "URL"
+msgstr ""
+
+#: src/infra/bot/templates/job/invalid.html:3
+msgid "The provided link does not appear to contain a job posting. Please submit a valid link to a job vacancy page."
+msgstr ""
+
+#: src/infra/bot/templates/job/parsed.html:1
+msgid "Vacancy parsed:"
+msgstr ""
+
+#: src/infra/bot/templates/resume/detail.html:1
+msgid "File"
+msgstr ""
+
+#: src/infra/bot/templates/resume/detail.html:3
+msgid "Status"
+msgstr ""
+
 #: src/infra/bot/templates/resume/done.html:1
-msgid "Your resume has been successfully processed!"
+msgid "Your resume has been successfully processed and saved!"
 msgstr ""
 
 #: src/infra/bot/templates/resume/done.html:4
-msgid "Extracted text:"
+msgid "You can now use the /job command to upload and save a job posting."
 msgstr ""
 
 #: src/infra/bot/templates/resume/failed.html:3
-msgid "Failed to process your resume. Please re-upload it and enter the /start command again."
+msgid "Failed to process your resume. Please try again using the /resume command."
+msgstr ""
+
+#: src/infra/bot/templates/resume/invalid.html:3
+msgid "The uploaded file does not appear to be a resume. Please upload a valid resume in PDF or DOCX format."
 msgstr ""
 
 #: src/infra/bot/templates/resume/processing.html:1
 msgid "Your resume has been uploaded and is being processed. Please wait, I will notify you when it's done."
+msgstr ""
+
+#: src/infra/bot/templates/resume/too_large.html:3
+#, python-format
+msgid "The file is too large. Maximum allowed size is %(max_size)s MB. Please upload a smaller file."
 msgstr ""
 
 #: src/infra/bot/templates/resume/upload_prompt.html:1
@@ -328,5 +739,89 @@ msgstr ""
 #~ msgstr ""
 
 #~ msgid "I am "
+#~ msgstr ""
+
+#~ msgid "Your resume has been successfully processed!"
+#~ msgstr ""
+
+#~ msgid "Extracted text:"
+#~ msgstr ""
+
+#~ msgid "Something went wrong. Please try /job again."
+#~ msgstr ""
+
+#~ msgid "Select a resume for job matching (page %d of %d):"
+#~ msgstr ""
+
+#~ msgid "Please upload a file in PDF or DOCX format."
+#~ msgstr ""
+
+#~ msgid "Invalid file format. Please upload your resume in one of the following formats: %s"
+#~ msgstr ""
+
+#~ msgid "You upload your resume, then specify the job opening, and a resume will be generated for that opening."
+#~ msgstr ""
+
+#~ msgid "You don't have any processed resumes yet. Please upload a resume first using /resumes."
+#~ msgstr ""
+
+#~ msgid "You haven't uploaded any resumes yet. Use /resume to upload one."
+#~ msgstr ""
+
+#~ msgid "Resume not found."
+#~ msgstr ""
+
+#~ msgid "🗑 Delete"
+#~ msgstr ""
+
+#~ msgid "Resume deleted."
+#~ msgstr ""
+
+#~ msgid "File"
+#~ msgstr ""
+
+#~ msgid "Status"
+#~ msgstr ""
+
+#~ msgid "Failed to download the file. Please try again."
+#~ msgstr ""
+
+#~ msgid "Failed to send the resume document. Please try again later."
+#~ msgstr ""
+
+#~ msgid "You don't have any saved vacancies yet. Use /job to add one before starting a chat."
+#~ msgstr ""
+
+#~ msgid "You don't have any processed resumes yet. Use /resume to upload a resume before starting a chat."
+#~ msgstr ""
+
+#~ msgid "To start a chat, you need a resume and a job posting. Use /resume to upload a resume and /job to add a job posting."
+#~ msgstr ""
+
+#~ msgid "You don't have any processed resumes yet. Please upload a resume first using /start."
+#~ msgstr ""
+
+#~ msgid "You haven't uploaded any resumes yet. Use /start to upload one."
+#~ msgstr ""
+
+#~ msgid "📄 Resumes"
+#~ msgstr ""
+
+#~ msgid "💼 Jobs"
+#~ msgstr ""
+
+#~ msgid "Select what you want to chat about:"
+#~ msgstr ""
+
+#~ msgid "No items found. Please upload documents first."
+#~ msgstr ""
+
+#~ msgid "Select an item to chat about (page %d of %d):"
+#~ msgstr ""
+
+#~ msgid "Tailoring your resume..."
+#~ msgstr ""
+
+#~ msgid "Failed to process your resume. Please re-upload it and enter the /start command again."
 #~ msgstr ""
 

@@ -1,0 +1,118 @@
+name: "Build and deploy"
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [closed]
+    branches: [dev]
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  detect-env:
+    name: "Detect if we need to deploy to production environment"
+    runs-on: ubuntu-latest
+    outputs:
+      env: ${{ steps.env.outputs.value }}
+    steps:
+      - name: "Set environment"
+        id: env
+        run: |
+          if [[ "${{ github.event_name }}" == "release" && "${{ github.event.action }}" == "published" ]]; then
+            echo "value=prod" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "pull_request" && "${{ github.event.action }}" == "closed" ]]; then
+            echo "value=test" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "value=test" >> $GITHUB_OUTPUT
+          else
+            echo "This event does not require deployment. Exiting."
+            exit 0
+          fi
+
+  build:
+    name: "Build and push docker images to registry"
+    if: ${{ needs.detect-env.outputs.env != '' }}
+    needs:
+      - detect-env
+    runs-on: ${{ needs.detect-env.outputs.env }}
+    environment: ${{ needs.detect-env.outputs.env }}
+    outputs:
+      tag: ${{ steps.tag.outputs.value }}
+      env-file: ${{ steps.tag.outputs.env-file }}
+      env: ${{ needs.detect-env.outputs.env }}
+    steps:
+      - name: "Echo environment"
+        id: env
+        run: | 
+          echo "Environment is '${{ needs.detect-env.outputs.env }}'"
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: "Setup tag and save env file"
+        id: tag
+        run: |
+          # Create env file
+          echo '${{ vars.ENV_FILE }}' > .env;
+          
+          # Set tag
+          export TAG="${{ github.sha }}";
+          export IMAGE_TAG="${{ github.sha }}";
+
+          # Prepend IMAGE_TAG and TAG to env file
+          echo "$(echo "TAG=$TAG"; cat .env)" > .env;
+          echo "$(echo "IMAGE_TAG=$IMAGE_TAG"; cat .env)" > .env;
+          
+          # Output tag and env file
+          echo "value=${{ github.sha }}" >> $GITHUB_OUTPUT;
+          echo "env-file<<EOF" >> $GITHUB_OUTPUT;
+          cat .env >> $GITHUB_OUTPUT;
+          echo "EOF" >> $GITHUB_OUTPUT;
+      - name: Log in to the Container registry
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef
+        with:
+          registry: ${{ vars.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build and push
+        run: |
+          make build push
+#      - name: Build and push with cache
+#        run: |
+#          # Convert docker-compose to bake format and build with cache
+#          docker buildx bake \
+#            --file docker-compose.yml \
+#            --file docker-compose.dev.yml \
+#            --file docker-compose-cache.json \
+#            --set "*.tags=${{ steps.tag.outputs.value }}" \
+#            --push
+
+  run-deploy:
+    needs:
+      - build
+    name: "Deploy to server"
+    runs-on: ${{ needs.build.outputs.env }}
+    environment: ${{ needs.build.outputs.env }}
+    steps:
+      - name: "Echo environment"
+        run: echo "Environment is ${{ needs.build.outputs.env }}"
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Create env file
+        run: |
+          echo '${{ needs.build.outputs.env-file }}' > .env
+      - name: Log in to the Container registry
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef
+        with:
+          registry: ${{ vars.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: "Pull images"
+        run: |
+          make pull
+      - name: "Deploy"
+        run: |
+          make migrate-ci up

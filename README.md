@@ -1,42 +1,29 @@
-# cv-generator
+# CV Generator Bot
 
-Приложение для создания агентов, которые могут выполнять задачи, связанные с анализом знаний.
+> A Telegram bot that tailors your resume to any job posting using AI.
+> Course project — [github.com/swimmwatch/cv-generator](https://github.com/swimmwatch/cv-generator)
 
-## Установка
-1. Клонируйте репозиторий:
-   ```bash
-   git clone https://github.com/swimmwatch/cv-generator.git
-   ```
-2. Перейдите в директорию проекта:
+---
 
-3. Сделайте копию файла `.env.example`, `.env.local.example` и переименуйте её в `.env`, `.env.local` соответственно:
-   ```bash
-   cp .env.example .env
-   cp .env.local.example .env.local
-   ```
+## Documentation
 
-   Проставьте необходимые переменные окружения.
+| Language | Link |
+|---|---|
+| 🇬🇧 English | [docs/README.en.md](docs/README.en.md) |
+| 🇷🇺 Русский | [docs/README.ru.md](docs/README.ru.md) |
 
-4. Запустите БД: PostgreSQL и Minio.
-   ```bash
-   make up
-   ```
+---
 
-4. Запустите инициализацию проекта:
-   ```bash
-   uv venv
-   uv sync
-   make migrate
-   ```
+## Quick Start
 
-5. Создайте суперпользователя:
-   ```bash
-   uv run manage createsuperuser
-   ```
+```bash
+git clone https://github.com/swimmwatch/cv-generator.git
+cd cv-generator
+cp .env.example .env && cp .env.local.example .env.local
+# Fill in OPENAI_API_KEY, TG_BOT_TOKEN, TG_WEBHOOK_URL in .env
+# Create S3 bucket
+make up
+make migrate-all
+```
 
-Готово!
-
-## Настройка
-Переменная `PROFILE` в файле `.env` определяет, какие настройки будут использоваться при запуске проекта. Доступные профили:
-- `main` - для полного запуска проекта с использованием всех сервисов.
-- `development` - для запуска проекта в режиме разработки, с отключёнными некоторыми сервисами (например, API, Worker).
+See the full documentation in your preferred language above.

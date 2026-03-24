@@ -1,5 +1,6 @@
 import typing
 
+from dependency_injector.providers import ConfigurationOption
 from taskiq import TaskiqMessage
 from taskiq import TaskiqMiddleware
 from taskiq import TaskiqResult
@@ -8,7 +9,9 @@ from infra.db.client.async_ import AsyncDatabase
 from infra.db.session_scope import clear_session_scope
 from infra.db.session_scope import set_session_scope
 from infra.di.container import Container
+from infra.logfire.setup import setup_logfire
 from infra.logger.utils import get_logger
+from infra.weaviate.client import WeaviateClient
 from utils.config import RunLevelEnum
 from utils.logger import setup_logger
 
@@ -20,13 +23,15 @@ class DIMiddleware(TaskiqMiddleware):
         super().__init__()
         self._container = container
         self._db: AsyncDatabase | None = None
+        self._weaviate: WeaviateClient | None = None
 
     async def startup(self) -> None:
         self._db = self._container.async_db()
+        self._weaviate = self._container.weaviate_client()
+        await self._weaviate.connect()
         self._container.init_resources()
         self._container.wire(
             modules=[
-                "apps.api.tasks",
                 "apps.bot.tasks",
                 "apps.worker.tasks",
             ],
@@ -35,6 +40,8 @@ class DIMiddleware(TaskiqMiddleware):
     async def shutdown(self) -> None:
         if self._container:
             self._container.unwire()
+            if self._weaviate is not None:
+                await self._weaviate.close()
             if self._db is not None:
                 await self._db.stop()
             self._container.shutdown_resources()
@@ -96,6 +103,15 @@ class StructlogMiddleware(TaskiqMiddleware):
             json_logs=self._env == RunLevelEnum.PRODUCTION,
             log_level=self._level,
         )
+
+
+class LogfireMiddleware(TaskiqMiddleware):
+    def __init__(self, settings: ConfigurationOption) -> None:
+        super().__init__()
+        self._settings = settings
+
+    async def startup(self) -> None:
+        setup_logfire(self._settings)
 
 
 class StartupTasksMiddleware(TaskiqMiddleware):

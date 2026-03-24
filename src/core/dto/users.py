@@ -12,6 +12,7 @@ class BaseUserDTO(BaseDTO):
     is_superuser: bool
     is_staff: bool
     language_code: str | None = None
+    balance: domains.CreditAmount = domains.DEFAULT_BALANCE
 
 
 class UserCreateDTO(BaseUserDTO):

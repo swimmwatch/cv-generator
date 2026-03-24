@@ -143,11 +143,13 @@ test:
 ## Migrations ##
 ################
 
-migrate:
+migrate-db:
 	$(RUNNER) alembic upgrade head
 
-migrate-ci:
-	docker compose $(ENV_CONF) run --rm api alembic upgrade head
+migrate-vector-db:
+	$(RUNNER) manage weaviate-migrate
+
+migrate-all: migrate-db migrate-vector-db
 
 revert-migrate:
 	$(RUNNER) alembic downgrade -1

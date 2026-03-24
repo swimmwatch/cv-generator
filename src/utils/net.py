@@ -1,5 +1,8 @@
 import ipaddress
 import secrets
+from urllib.parse import urlparse
+
+import aiohttp
 
 # Special-use IPv4 networks that should not be considered globally routable
 _TEST_NETS = [
@@ -86,3 +89,18 @@ def random_public_ipv4(max_attempts: int = 1000) -> str:
 
 # Backward compatibility alias (deprecated). Remove after dependent code migrates.
 random_public_ipv4_fallback = random_public_ipv4  # type: ignore[assignment]
+
+
+def is_valid_url(url: str) -> bool:
+    parsed = urlparse(url)
+    return parsed.scheme in ("http", "https") and bool(parsed.netloc)
+
+
+async def is_url_reachable(url: str, timeout: float = 10) -> bool:
+    try:
+        client_timeout = aiohttp.ClientTimeout(total=timeout)
+        async with aiohttp.ClientSession() as session:
+            async with session.head(url, timeout=client_timeout, allow_redirects=True) as resp:
+                return resp.status < 500
+    except Exception:
+        return False

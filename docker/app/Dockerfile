@@ -27,9 +27,12 @@ FROM python:${PYTHON_VERSION:-3.13}-slim AS runtime
 
 WORKDIR /app
 
-# Minimal runtime OS deps for healthchecks/troubleshooting
+# Minimal runtime OS deps for healthchecks/troubleshooting + WeasyPrint
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl jq \
+    && apt-get install -y --no-install-recommends \
+       curl jq \
+       libcairo2 libpango-1.0-0 libpangocairo-1.0-0 \
+       libgdk-pixbuf-2.0-0 libffi8 libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Create an unprivileged user

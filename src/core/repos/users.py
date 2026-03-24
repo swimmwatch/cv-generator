@@ -28,6 +28,14 @@ class UserRepository(typing.Protocol):
     ) -> UserOutDTO | None:
         pass
 
+    async def deduct_balance(
+        self, user_id: domains.UserID, amount: domains.CreditAmount
+    ) -> domains.CreditAmount | None:
+        pass
+
+    async def topup_balance(self, user_id: domains.UserID, amount: domains.CreditAmount) -> domains.CreditAmount | None:
+        pass
+
 
 class SqlAlchemyUserRepository(UserRepository):
     def __init__(self, session: AsyncSession):
@@ -78,3 +86,11 @@ class SqlAlchemyUserRepository(UserRepository):
             return None
 
         return await self.get_by_pk(pk)
+
+    async def deduct_balance(
+        self, user_id: domains.UserID, amount: domains.CreditAmount
+    ) -> domains.CreditAmount | None:
+        return await self._user_dal.deduct_balance(user_id=user_id, amount=amount)
+
+    async def topup_balance(self, user_id: domains.UserID, amount: domains.CreditAmount) -> domains.CreditAmount | None:
+        return await self._user_dal.topup_balance(user_id=user_id, amount=amount)

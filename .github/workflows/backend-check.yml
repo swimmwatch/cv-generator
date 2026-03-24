@@ -1,0 +1,76 @@
+name: "Run Backend linters and tests"
+on:
+  pull_request:
+    paths:
+      - '**/*.py'
+      - 'uv.lock'
+      - 'pyproject.toml'
+      - '.github/workflows/actionlint.yml'
+      - '.github/workflows/backend-check.yml'
+    branches:
+      - master
+      - dev
+
+jobs:
+  lint:
+    name: "Run Backend linters"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.13"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{matrix.python-version}}
+          enable-cache: true
+      - name: Install dependencies
+        run: uv sync
+      - name: Run flake8
+        run: make flake
+      - name: Run mypy
+        run: make mypy
+      - name: Run black lint
+        run: make black-lint
+  test:
+    name: "Run Backend tests"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.13"]
+    env:
+      DB_NAME: postgres
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: "localhost"
+      DB_PORT: 5555
+      ENV: "dev"
+    services:
+      postgres:
+        image: postgres:17.6-alpine
+        env:
+          POSTGRES_DB: ${{env.DB_NAME}}
+          POSTGRES_USER: ${{env.DB_USER}}
+          POSTGRES_PASSWORD: ${{env.DB_PASSWORD}}
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+           - 5555:5432
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{matrix.python-version}}
+          enable-cache: true
+      - name: Install dependencies
+        run: uv sync
+      - name: Run pytest
+        run: make test

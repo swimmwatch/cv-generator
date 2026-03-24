@@ -8,6 +8,7 @@ from taskiq_redis import RedisAsyncResultBackend
 
 from infra.di.container import Container
 from infra.worker.middlewares import DIMiddleware
+from infra.worker.middlewares import LogfireMiddleware
 from infra.worker.middlewares import StartupTasksMiddleware
 from infra.worker.middlewares import StructlogMiddleware
 
@@ -20,6 +21,7 @@ broker = broker.with_middlewares(
         config.logger.env(),
         config.logger.level(),
     ),
+    LogfireMiddleware(config.logfire),
     DIMiddleware(container),
     StartupTasksMiddleware(),
     SimpleRetryMiddleware(config.worker.default_retry_count()),

@@ -1,3 +1,4 @@
+from polyfactory.fields import Ignore
 from polyfactory.fields import Use
 from polyfactory.pytest_plugin import register_fixture
 
@@ -16,3 +17,7 @@ class UserFactory(BaseSQLAFactory[models.User]):
     last_name = Use(lambda: BaseSQLAFactory.__faker__.last_name())
     is_staff = False
     is_superuser = False
+    resumes = Ignore()
+    jobs = Ignore()
+    generated_cvs = Ignore()
+    transactions = Ignore()

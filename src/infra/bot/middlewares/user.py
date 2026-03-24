@@ -2,6 +2,7 @@ import typing
 
 from aiogram import BaseMiddleware
 from aiogram.types import TelegramObject
+from aiogram.types import Update
 from dependency_injector.wiring import Closing
 from dependency_injector.wiring import Provide
 from dependency_injector.wiring import inject
@@ -24,13 +25,19 @@ class UpdateOrCreateUserMiddleware(BaseMiddleware):
         transaction_manager: AsyncTransactionManager = Closing[Provide["async_transaction_manager_scoped"]],
         user_service: services.UserService = Closing[Provide["user_service"]],
     ) -> typing.Any:
-        tg_user = event.message.from_user  # type: ignore[attr-defined]
+        tg_user = None
+        if isinstance(event, Update):
+            if event.message:
+                tg_user = event.message.from_user
+            elif event.callback_query:
+                tg_user = event.callback_query.from_user
+
         if tg_user is None:
             logger.info("Cannot obtain tg_user from event. Skipping user update or create.")
             return await handler(event, data)
 
         async with transaction_manager:
-            user, _ = await user_service.update_or_create_by_tg(tg_user)
+            user, _ = await user_service.update_or_create_by_tg(tg_user)  # type: ignore[arg-type]
             data["user"] = user
 
         return await handler(event, data)

@@ -16,6 +16,7 @@ from infra.api.middlewares import RequestIdMiddleware
 from infra.bot.runtime.aiogram import AiogramPoller
 from infra.bot.runtime.aiogram import AiogramWebhookServer
 from infra.di.container import Container
+from infra.logfire.setup import setup_logfire
 from infra.logger.utils import get_logger
 from utils.config import RunLevelEnum
 from utils.logger import setup_logger
@@ -59,6 +60,7 @@ async def lifespan(fastapi_app: FastAPI) -> typing.AsyncGenerator[None, None]:
         json_logs=config.logger.json_output(),
         log_level=config.logger.level(),
     )
+    setup_logfire(config.logfire)
 
     add_routes(fastapi_app)
 
@@ -74,6 +76,10 @@ async def lifespan(fastapi_app: FastAPI) -> typing.AsyncGenerator[None, None]:
             ],
         )
         container.init_resources()  # type: ignore[misc]
+
+        weaviate = container.weaviate_client()
+        await weaviate.connect()
+
         logger.info("DI resources was inited.")
 
         bot = create_bot(container)
@@ -106,6 +112,9 @@ async def lifespan(fastapi_app: FastAPI) -> typing.AsyncGenerator[None, None]:
         with suppress(Exception):
             if storage is not None:
                 await storage.close()
+
+        with suppress(Exception):
+            await weaviate.close()
 
         container.shutdown_resources()  # type: ignore[misc]
         await db.stop()
