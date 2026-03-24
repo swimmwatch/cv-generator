@@ -4,7 +4,7 @@ from decimal import Decimal
 
 CreditAmount: typing.TypeAlias = Decimal
 
-DEFAULT_BALANCE: CreditAmount = CreditAmount("10")
+DEFAULT_BALANCE: CreditAmount = CreditAmount("50")
 
 
 class CreditAction(enum.IntEnum):

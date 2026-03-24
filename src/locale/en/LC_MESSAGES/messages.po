@@ -264,7 +264,7 @@ msgid "I tailor your resume to any job posting using AI."
 msgstr ""
 
 #: src/infra/bot/templates/greet.html:5
-msgid "The bot uses a credit system. You start with 10 free credits. Each action costs 1 credit: uploading a resume, saving a job, generating a CV."
+msgid "The bot uses a credit system. You start with 50 free credits. Each action costs 1 credit: uploading a resume, saving a job, generating a CV."
 msgstr ""
 
 #: src/infra/bot/templates/greet.html:8

@@ -7,22 +7,34 @@
 
 ## Table of Contents
 
-- [Overview](#overview)
-- [Features](#features)
-- [Architecture](#architecture)
-  - [System Overview](#system-overview)
-  - [CV Generation Pipeline](#cv-generation-pipeline)
-  - [Data Model](#data-model)
-- [Technology Stack](#technology-stack)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Configuration](#configuration)
-  - [Running with Docker](#running-with-docker)
-  - [Development Setup](#development-setup)
-- [How to Use](#how-to-use)
-  - [Commands](#commands)
-  - [Credit System](#credit-system)
-- [Project Structure](#project-structure)
+- [CV Generator Bot — English Documentation](#cv-generator-bot--english-documentation)
+  - [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+  - [Features](#features)
+  - [Architecture](#architecture)
+    - [System Overview](#system-overview)
+    - [CV Generation Pipeline](#cv-generation-pipeline)
+    - [Data Model](#data-model)
+  - [AI Agents](#ai-agents)
+    - [Tools Reference](#tools-reference)
+      - [MCP Tools (browser automation via Playwright)](#mcp-tools-browser-automation-via-playwright)
+      - [Internal Tools (Python functions exposed to the agent)](#internal-tools-python-functions-exposed-to-the-agent)
+    - [CV Generator Agent](#cv-generator-agent)
+    - [Job Parser Agent](#job-parser-agent)
+    - [Resume Parser Agent](#resume-parser-agent)
+    - [Chat Agent](#chat-agent)
+  - [Technology Stack](#technology-stack)
+    - [Observability with Logfire](#observability-with-logfire)
+  - [Getting Started](#getting-started)
+    - [Prerequisites](#prerequisites)
+    - [Configuration](#configuration)
+    - [Running with Docker](#running-with-docker)
+    - [Development Setup](#development-setup)
+  - [How to Use](#how-to-use)
+    - [Commands](#commands)
+    - [Step-by-Step Workflow](#step-by-step-workflow)
+    - [Credit System](#credit-system)
+  - [Project Structure](#project-structure)
 
 ---
 
@@ -48,7 +60,7 @@ The project was built as a course work assignment and demonstrates the integrati
 | **AI CV generation** | A 4-step agentic workflow analyses the vacancy, maps your experience, and assembles a tailored resume |
 | **PDF output** | Generated CVs are rendered from HTML templates and delivered as PDF |
 | **Interactive chat** | Ask questions about your resume or job postings in a conversational interface |
-| **Credit system** | Each action costs credits; new users receive 10 free credits |
+| **Credit system** | Each action costs credits; new users receive 50 free credits |
 | **Top-up via Telegram Stars** | Buy credit packs directly inside Telegram using the built-in payment system |
 | **Multi-language UI** | Bot messages are available in English and Russian |
 
@@ -241,6 +253,237 @@ Resume and Job entities also produce **chunks** stored in Weaviate (vector DB) f
 
 ---
 
+## AI Agents
+
+The system relies on four LLM agents built with **pydantic-ai** and orchestrated (where needed) with **LangGraph**. Two agents use a stateful graph with explicit nodes and retry logic; two are simpler single-call wrappers. All agents talk to OpenAI and access the vector database (Weaviate) through typed repository calls.
+
+### Tools Reference
+
+Agents use two categories of tools:
+
+#### MCP Tools (browser automation via Playwright)
+
+Provided by the **Playwright MCP** sidecar container over HTTP streaming. Available only to the **Job Parser** agent.
+
+| Tool | Description |
+|---|---|
+| `browser_navigate` | Navigate to a URL in the headless browser |
+| `browser_wait_for` | Wait for a CSS selector or network idle |
+| `browser_snapshot` | Capture the current page as structured accessibility tree (text) |
+| `browser_click` | Click an element on the page |
+| `browser_evaluate` | Run arbitrary JavaScript in the browser context |
+| `browser_tabs` | List or switch between open browser tabs |
+| `browser_close` | Close the current browser tab |
+
+#### Internal Tools (Python functions exposed to the agent)
+
+| Tool | Agent | Description |
+|---|---|---|
+| `search_resume_chunks` | CV Generator | Semantic similarity search over indexed resume sections (Weaviate) |
+| `search_vacancy_chunks` | CV Generator | Semantic similarity search over indexed job posting sections (Weaviate) |
+| `get_resume_content` | Chat | Retrieve all chunks of the selected resume |
+| `get_job_content` | Chat | Retrieve all chunks of the selected job posting |
+| `search_resumes` | Chat | Semantic search in the selected resume (Weaviate) |
+| `search_jobs` | Chat | Semantic search in the selected job posting (Weaviate) |
+
+---
+
+### CV Generator Agent
+
+The most complex agent. Implemented as a **LangGraph StateGraph** with four sequential nodes. It uses three separate pydantic-ai sub-agents internally, each responsible for one reasoning step.
+
+**Input state fields:** `user_id`, `metadata` (name, contacts, education, experience), `job_text`, `job_title`, `job_id`, `resume_id`, `template_json`  
+**Output:** `CvGeneratorResult(success, result: ResumePayload)`
+
+```mermaid
+stateDiagram-v2
+    [*] --> validate_input
+
+    validate_input --> analyze_vacancy : valid
+    validate_input --> [*] : missing fields → error
+
+    state analyze_vacancy {
+        [*] --> VacancyLLM
+        VacancyLLM --> search_resume_chunks : tool call
+        search_resume_chunks --> VacancyLLM : results
+        VacancyLLM --> search_vacancy_chunks : tool call
+        search_vacancy_chunks --> VacancyLLM : results
+        VacancyLLM --> [*] : VacancyAnalysis
+        note right of VacancyLLM
+            pydantic-ai Agent
+            UsageLimits(request_limit=3)
+        end note
+    }
+    analyze_vacancy --> build_evidence_map : VacancyAnalysis ready
+    analyze_vacancy --> [*] : error
+
+    state build_evidence_map {
+        [*] --> FetchChunks
+        FetchChunks --> EvidenceLLM : resume_chunks + vacancy_chunks injected
+        note right of FetchChunks
+            asyncio.gather() fetches
+            chunks in parallel
+            (no tool calls needed)
+        end note
+        EvidenceLLM --> [*] : EvidenceMap
+    }
+    build_evidence_map --> assemble_payload : EvidenceMap ready
+    build_evidence_map --> [*] : error
+
+    state assemble_payload {
+        [*] --> AssemblyLLM
+        AssemblyLLM --> [*] : ResumePayload
+        note right of AssemblyLLM
+            Transliterates names &
+            companies to job language
+        end note
+    }
+    assemble_payload --> [*] : success
+    assemble_payload --> assemble_payload : retries < max_retries
+    assemble_payload --> [*] : max retries exceeded → error
+```
+
+**Evidence classification** — each resume experience is labeled as:
+- `direct` — clearly matches the requirement
+- `adjacent` — related, transferable skill
+- `unsupported` — no matching evidence → omitted from CV
+
+---
+
+### Job Parser Agent
+
+A **LangGraph StateGraph** with three nodes. Uses the **Playwright MCP** toolset to open the job posting URL in a headless browser and extract its content, then a second LLM call structures the result.
+
+**Input:** `job_reference` (URL)  
+**Output:** `JobParserResult(success, result: JobCard, error)`
+
+```mermaid
+stateDiagram-v2
+    [*] --> fetch_page
+
+    state fetch_page {
+        [*] --> FetchLLM
+        FetchLLM --> browser_navigate : MCP tool
+        browser_navigate --> FetchLLM
+        FetchLLM --> browser_wait_for : MCP tool
+        browser_wait_for --> FetchLLM
+        FetchLLM --> browser_snapshot : MCP tool
+        browser_snapshot --> FetchLLM : page text
+        FetchLLM --> browser_evaluate : MCP tool (optional)
+        browser_evaluate --> FetchLLM
+        FetchLLM --> [*] : page_content
+        note right of FetchLLM
+            Playwright MCP toolset
+            Chromium headless 1920×1080
+        end note
+    }
+    fetch_page --> extract : page_content ready
+    fetch_page --> fetch_page : error, retries < max
+    fetch_page --> [*] : max retries exceeded
+
+    state extract {
+        [*] --> ExtractLLM
+        ExtractLLM --> [*] : JobCard
+        note right of ExtractLLM
+            No tools — pure extraction
+            max_tokens=16384
+        end note
+    }
+    extract --> validate : JobCard ready
+    extract --> extract : error, retries < max
+    extract --> [*] : max retries exceeded
+
+    state validate {
+        [*] --> CheckJobPosting
+        CheckJobPosting --> [*] : is_job_posting=true
+        CheckJobPosting --> [*] : is_job_posting=false → NOT_A_JOB_POSTING
+    }
+    validate --> [*] : done
+```
+
+**JobCard output fields:** `is_job_posting`, `language_code`, `job_title`, `company_name`, `employment_type`, `location`, `seniority_level`, `required_skills`, `nice_to_have_skills`, `responsibilities`, `requirements`, `conditions`, `summary`, `text`
+
+---
+
+### Resume Parser Agent
+
+A **simple single-call pydantic-ai agent** — no LangGraph graph, no tools. It receives the raw text of a resume (already extracted from PDF/DOCX by the worker), validates it is actually a resume, then parses it into a structured payload and produces chunks for Weaviate indexing.
+
+**Input:** `resume_text`, `resume_id`, `user_id`  
+**Output:** `ResumeParseResult(title, chunks, metadata)`
+
+```mermaid
+stateDiagram-v2
+    [*] --> ParseLLM : resume_text
+
+    state ParseLLM {
+        [*] --> Validate
+        Validate --> [*] : is_resume=false → InvalidResumeError
+        Validate --> ExtractPayload : is_resume=true
+        ExtractPayload --> [*] : ResumePayload
+        note right of ParseLLM
+            temperature=0.0
+            max_tokens=16384
+            No tools
+        end note
+    }
+
+    ParseLLM --> ChunkBuilder : ResumePayload
+
+    state ChunkBuilder {
+        [*] --> FullText
+        FullText --> AboutChunk
+        AboutChunk --> SkillsChunk
+        SkillsChunk --> ExperienceChunks : one per entry
+        ExperienceChunks --> EducationChunks : one per entry
+        EducationChunks --> [*]
+    }
+
+    ChunkBuilder --> IndexWeaviate : chunks[]
+    IndexWeaviate --> [*] : ResumeParseResult
+```
+
+**Chunk sections produced:** `full_text`, `about`, `skills`, `experience` (×N), `education` (×N)
+
+---
+
+### Chat Agent
+
+A **streaming single-call pydantic-ai agent** with a 4-function toolset. The agent autonomously decides which tools to call based on the user's question. Message history (up to 50 messages) is maintained in the bot handler and passed on each call — there is no persistent graph state.
+
+**Input:** `query`, `user_id`, `resume_id`, `job_id`, `message_history`  
+**Output:** streamed text + updated `message_history`
+
+```mermaid
+stateDiagram-v2
+    [*] --> ChatLLM : query + history (max 50 msgs)
+
+    state ChatLLM {
+        [*] --> Reason
+        Reason --> get_resume_content : tool call
+        get_resume_content --> Reason : all resume chunks
+        Reason --> get_job_content : tool call
+        get_job_content --> Reason : all job chunks
+        Reason --> search_resumes : tool call
+        search_resumes --> Reason : top-K chunks (Weaviate)
+        Reason --> search_jobs : tool call
+        search_jobs --> Reason : top-K chunks (Weaviate)
+        Reason --> StreamOutput : answer ready
+        note right of Reason
+            Agent picks tools
+            autonomously as needed
+        end note
+    }
+
+    ChatLLM --> on_delta : streamed text deltas
+    on_delta --> ChatLLM : continues streaming
+    ChatLLM --> [*] : full_text + updated history
+```
+
+**Tool calls behaviour:** `get_*` tools return all chunks for full context; `search_*` tools run a Weaviate vector query and return the top-5 most relevant chunks. The agent may call multiple tools in a single response turn.
+
+---
+
 ## Technology Stack
 
 | Category | Library / Service | Version |
@@ -268,6 +511,28 @@ Resume and Job entities also produce **chunks** stored in Weaviate (vector DB) f
 | **Structured logging** | structlog + Logfire | 25.5.0 / 4.25.0 |
 | **Type checking** | mypy | 1.19.1 |
 | **Testing** | pytest + pytest-asyncio | 9.0.2 / 1.3.0 |
+
+### Observability with Logfire
+
+[Logfire](https://logfire.pydantic.dev) is Pydantic's structured observability platform. It is integrated at the framework level, meaning **no manual instrumentation is required** in application code — traces are emitted automatically.
+
+What is captured out of the box:
+
+| Source | What is traced |
+|---|---|
+| **pydantic-ai agents** | Every agent run, each LLM request/response, tool calls with arguments and results, token usage per step |
+| **LangGraph** | Each graph node execution, state transitions, retry attempts |
+| **SQLAlchemy** | All SQL queries with parameters and execution time |
+| **httpx** | Outgoing HTTP requests (MCP, OpenAI, S3, Weaviate) with latency and status |
+| **asyncio tasks** | Taskiq job execution spans |
+
+Logfire sends structured spans to the Pydantic Logfire cloud dashboard, where you can:
+- View the full trace of a CV generation request end-to-end (bot → worker → agents → OpenAI)
+- Inspect exactly how many tokens each agent step consumed
+- See which tool calls the agent made and how long each took
+- Drill into SQL queries triggered by a single user action
+
+To enable, set `LOGFIRE_TOKEN` in your `.env` file. If the token is absent, Logfire silently disables itself — no code changes needed.
 
 ---
 
@@ -408,7 +673,7 @@ make lint
 
 ### Credit System
 
-New users start with **10 free credits**.
+New users start with **50 free credits**.
 
 | Action | Cost |
 |---|---|

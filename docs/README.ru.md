@@ -15,6 +15,12 @@
     - [Общая схема системы](#общая-схема-системы)
     - [Пайплайн генерации резюме](#пайплайн-генерации-резюме)
     - [Модель данных](#модель-данных)
+  - [ИИ-агенты](#ии-агенты)
+    - [Справочник инструментов](#справочник-инструментов)
+    - [Агент генерации CV](#агент-генерации-cv)
+    - [Агент парсинга вакансий](#агент-парсинга-вакансий)
+    - [Агент парсинга резюме](#агент-парсинга-резюме)
+    - [Чат-агент](#чат-агент)
   - [Технологический стек](#технологический-стек)
   - [Начало работы](#начало-работы)
     - [Требования](#требования)
@@ -51,7 +57,7 @@
 | **ИИ-генерация CV** | Четырёхшаговый агентный воркфлоу анализирует вакансию, подбирает релевантный опыт и собирает резюме |
 | **Вывод в PDF** | Сгенерированные CV рендерятся из HTML-шаблона и отправляются как PDF-файл |
 | **Интерактивный чат** | Задавайте вопросы о своём резюме или вакансии в диалоговом режиме |
-| **Система кредитов** | Каждое действие стоит кредиты; новые пользователи получают 10 бесплатных кредитов |
+| **Система кредитов** | Каждое действие стоит кредиты; новые пользователи получают 50 бесплатных кредитов |
 | **Пополнение через Telegram Stars** | Покупка кредитов прямо внутри Telegram с помощью встроенной платёжной системы |
 | **Мультиязычный интерфейс** | Сообщения бота доступны на английском и русском языке |
 
@@ -244,6 +250,239 @@ erDiagram
 
 ---
 
+## ИИ-агенты
+
+Система использует четыре LLM-агента, построенных на **pydantic-ai** и оркестрируемых (там, где необходимо) через **LangGraph**. Два агента используют граф состояний с явными узлами и повторными попытками; два — более простые обёртки с одним вызовом. Все агенты обращаются к OpenAI и к векторной базе данных (Weaviate) через типизированные репозитории.
+
+### Справочник инструментов
+
+Агенты используют два вида инструментов:
+
+#### MCP-инструменты (браузерная автоматизация через Playwright)
+
+Предоставляются sidecar-контейнером **Playwright MCP** по HTTP streaming. Доступны только агенту **Job Parser**.
+
+| Инструмент | Описание |
+|---|---|
+| `browser_navigate` | Перейти по URL в headless-браузере |
+| `browser_wait_for` | Ождать появления CSS-селектора или завершения сетевых запросов |
+| `browser_snapshot` | Получить текстовое дерево доступности текущей страницы |
+| `browser_click` | Кликнуть по элементу на странице |
+| `browser_evaluate` | Выполнить произвольный JavaScript в контексте браузера |
+| `browser_tabs` | Получить список вкладок или переключиться между ними |
+| `browser_close` | Закрыть текущую вкладку браузера |
+
+#### Внутренние инструменты (Python-функции, доступные агенту)
+
+| Инструмент | Агент | Описание |
+|---|---|---|
+| `search_resume_chunks` | CV Generator | Семантический поиск по проиндексированным секциям резюме (Weaviate) |
+| `search_vacancy_chunks` | CV Generator | Семантический поиск по проиндексированным секциям вакансии (Weaviate) |
+| `get_resume_content` | Chat | Получить все чанки выбранного резюме |
+| `get_job_content` | Chat | Получить все чанки выбранной вакансии |
+| `search_resumes` | Chat | Семантический поиск в выбранном резюме (Weaviate) |
+| `search_jobs` | Chat | Семантический поиск в выбранной вакансии (Weaviate) |
+
+---
+
+### Агент генерации CV
+
+Наиболее сложный агент. Реализован как **LangGraph StateGraph** с четырьмя последовательными узлами. Внутри использует три отдельных pydantic-ai суб-агента, каждый из которых отвечает за один шаг рассуждения.
+
+**Поля входного состояния:** `user_id`, `metadata` (имя, контакты, образование, опыт), `job_text`, `job_title`, `job_id`, `resume_id`, `template_json`  
+**Выход:** `CvGeneratorResult(success, result: ResumePayload)`
+
+```mermaid
+stateDiagram-v2
+    [*] --> validate_input
+
+    validate_input --> analyze_vacancy : данные валидны
+    validate_input --> [*] : отсутствуют поля → ошибка
+
+    state analyze_vacancy {
+        [*] --> VacancyLLM
+        VacancyLLM --> search_resume_chunks : вызов инструмента
+        search_resume_chunks --> VacancyLLM : результаты
+        VacancyLLM --> search_vacancy_chunks : вызов инструмента
+        search_vacancy_chunks --> VacancyLLM : результаты
+        VacancyLLM --> [*] : VacancyAnalysis
+        note right of VacancyLLM
+            pydantic-ai Agent
+            UsageLimits(request_limit=3)
+        end note
+    }
+    analyze_vacancy --> build_evidence_map : VacancyAnalysis готов
+    analyze_vacancy --> [*] : ошибка
+
+    state build_evidence_map {
+        [*] --> FetchChunks
+        FetchChunks --> EvidenceLLM : чанки резюме + вакансии переданы в промпт
+        note right of FetchChunks
+            asyncio.gather() получает
+            чанки параллельно
+            (без вызовов инструментов)
+        end note
+        EvidenceLLM --> [*] : EvidenceMap
+    }
+    build_evidence_map --> assemble_payload : EvidenceMap готов
+    build_evidence_map --> [*] : ошибка
+
+    state assemble_payload {
+        [*] --> AssemblyLLM
+        AssemblyLLM --> [*] : ResumePayload
+        note right of AssemblyLLM
+            Транслитерирует имена и
+            компании на язык вакансии
+        end note
+    }
+    assemble_payload --> [*] : успех
+    assemble_payload --> assemble_payload : retries < max_retries
+    assemble_payload --> [*] : превышено число попыток → ошибка
+```
+
+**Классификация доказательств** — каждый опыт из резюме помечается:
+- `direct` — явно соответствует требованию
+- `adjacent` — смежный, переносимый навык
+- `unsupported` — совпадений нет → исключается из CV
+
+---
+
+### Агент парсинга вакансий
+
+**LangGraph StateGraph** с тремя узлами. Использует инструменты **Playwright MCP**, чтобы открыть URL вакансии в headless-браузере и извлечь содержимое, затем второй LLM-вызов структурирует результат.
+
+**Вход:** `job_reference` (URL)  
+**Выход:** `JobParserResult(success, result: JobCard, error)`
+
+```mermaid
+stateDiagram-v2
+    [*] --> fetch_page
+
+    state fetch_page {
+        [*] --> FetchLLM
+        FetchLLM --> browser_navigate : MCP-инструмент
+        browser_navigate --> FetchLLM
+        FetchLLM --> browser_wait_for : MCP-инструмент
+        browser_wait_for --> FetchLLM
+        FetchLLM --> browser_snapshot : MCP-инструмент
+        browser_snapshot --> FetchLLM : текст страницы
+        FetchLLM --> browser_evaluate : MCP-инструмент (опц.)
+        browser_evaluate --> FetchLLM
+        FetchLLM --> [*] : page_content
+        note right of FetchLLM
+            Playwright MCP toolset
+            Chromium headless 1920×1080
+        end note
+    }
+    fetch_page --> extract : page_content готов
+    fetch_page --> fetch_page : ошибка, retries < max
+    fetch_page --> [*] : превышено число попыток
+
+    state extract {
+        [*] --> ExtractLLM
+        ExtractLLM --> [*] : JobCard
+        note right of ExtractLLM
+            Без инструментов — чистая
+            структуризация
+            max_tokens=16384
+        end note
+    }
+    extract --> validate : JobCard готов
+    extract --> extract : ошибка, retries < max
+    extract --> [*] : превышено число попыток
+
+    state validate {
+        [*] --> CheckJobPosting
+        CheckJobPosting --> [*] : is_job_posting=true
+        CheckJobPosting --> [*] : is_job_posting=false → NOT_A_JOB_POSTING
+    }
+    validate --> [*] : готово
+```
+
+**Поля JobCard:** `is_job_posting`, `language_code`, `job_title`, `company_name`, `employment_type`, `location`, `seniority_level`, `required_skills`, `nice_to_have_skills`, `responsibilities`, `requirements`, `conditions`, `summary`, `text`
+
+---
+
+### Агент парсинга резюме
+
+**Простой однократный pydantic-ai агент** — без графа LangGraph, без инструментов. Получает сырой текст резюме (уже извлечённый воркером из PDF/DOCX), проверяет, что это действительно резюме, затем парсит его в структурированный формат и создаёт чанки для индексации в Weaviate.
+
+**Вход:** `resume_text`, `resume_id`, `user_id`  
+**Выход:** `ResumeParseResult(title, chunks, metadata)`
+
+```mermaid
+stateDiagram-v2
+    [*] --> ParseLLM : resume_text
+
+    state ParseLLM {
+        [*] --> Validate
+        Validate --> [*] : is_resume=false → InvalidResumeError
+        Validate --> ExtractPayload : is_resume=true
+        ExtractPayload --> [*] : ResumePayload
+        note right of ParseLLM
+            temperature=0.0
+            max_tokens=16384
+            Без инструментов
+        end note
+    }
+
+    ParseLLM --> ChunkBuilder : ResumePayload
+
+    state ChunkBuilder {
+        [*] --> FullText
+        FullText --> AboutChunk
+        AboutChunk --> SkillsChunk
+        SkillsChunk --> ExperienceChunks : по одному на каждую запись
+        ExperienceChunks --> EducationChunks : по одному на каждую запись
+        EducationChunks --> [*]
+    }
+
+    ChunkBuilder --> IndexWeaviate : chunks[]
+    IndexWeaviate --> [*] : ResumeParseResult
+```
+
+**Создаваемые секции чанков:** `full_text`, `about`, `skills`, `experience` (×N), `education` (×N)
+
+---
+
+### Чат-агент
+
+**Потоковый однократный pydantic-ai агент** с набором из 4 инструментов. Агент самостоятельно решает, какие инструменты вызвать, исходя из вопроса пользователя. История сообщений (до 50 сообщений) хранится в обработчике бота и передаётся при каждом вызове — постоянного состояния графа нет.
+
+**Вход:** `query`, `user_id`, `resume_id`, `job_id`, `message_history`  
+**Выход:** потоковый текст + обновлённая `message_history`
+
+```mermaid
+stateDiagram-v2
+    [*] --> ChatLLM : запрос + история (макс. 50 сообщений)
+
+    state ChatLLM {
+        [*] --> Reason
+        Reason --> get_resume_content : вызов инструмента
+        get_resume_content --> Reason : все чанки резюме
+        Reason --> get_job_content : вызов инструмента
+        get_job_content --> Reason : все чанки вакансии
+        Reason --> search_resumes : вызов инструмента
+        search_resumes --> Reason : top-K чанков (Weaviate)
+        Reason --> search_jobs : вызов инструмента
+        search_jobs --> Reason : top-K чанков (Weaviate)
+        Reason --> StreamOutput : ответ готов
+        note right of Reason
+            Агент выбирает инструменты
+            автономно по мере
+            необходимости
+        end note
+    }
+
+    ChatLLM --> on_delta : потоковые дельты текста
+    on_delta --> ChatLLM : продолжение стриминга
+    ChatLLM --> [*] : full_text + обновлённая история
+```
+
+**Поведение инструментов:** `get_*` — возвращают все чанки для полного контекста; `search_*` — выполняют векторный запрос в Weaviate и возвращают топ-5 наиболее релевантных чанков. Агент может вызвать несколько инструментов в рамках одного ответа.
+
+---
+
 ## Технологический стек
 
 | Категория | Библиотека / Сервис | Версия |
@@ -271,6 +510,28 @@ erDiagram
 | **Структурированное логирование** | structlog + Logfire | 25.5.0 / 4.25.0 |
 | **Проверка типов** | mypy | 1.19.1 |
 | **Тестирование** | pytest + pytest-asyncio | 9.0.2 / 1.3.0 |
+
+### Наблюдаемость с Logfire
+
+[Logfire](https://logfire.pydantic.dev) — облачная платформа структурированной наблюдаемости от Pydantic. Интегрирована на уровне фреймворков, поэтому **ручной инструментации в коде приложения не требуется** — трейсы эмитируются автоматически.
+
+Что фиксируется из коробки:
+
+| Источник | Что трейсируется |
+|---|---|
+| **pydantic-ai агенты** | Каждый запуск агента, каждый LLM-запрос/ответ, вызовы инструментов с аргументами и результатами, потребление токенов на каждом шаге |
+| **LangGraph** | Выполнение каждого узла графа, переходы между состояниями, повторные попытки |
+| **SQLAlchemy** | Все SQL-запросы с параметрами и временем выполнения |
+| **httpx** | Исходящие HTTP-запросы (MCP, OpenAI, S3, Weaviate) с задержкой и статусом |
+| **asyncio-задачи** | Спаны выполнения Taskiq-задач |
+
+Logfire отправляет структурированные спаны в облачный дашборд Pydantic Logfire, где можно:
+- Просмотреть полный трейс запроса генерации CV от начала до конца (бот → воркер → агенты → OpenAI)
+- Увидеть, сколько токенов потребил каждый шаг агента
+- Посмотреть, какие инструменты вызывал агент и сколько времени каждый занял
+- Детализировать SQL-запросы, порождённые одним действием пользователя
+
+Для активации укажите `LOGFIRE_TOKEN` в файле `.env`. Если токен не задан, Logfire отключается автоматически — изменений в коде не требуется.
 
 ---
 
@@ -411,7 +672,7 @@ make lint
 
 ### Система кредитов
 
-Новые пользователи получают **10 бесплатных кредитов**.
+Новые пользователи получают **50 бесплатных кредитов**.
 
 | Действие | Стоимость |
 |---|---|

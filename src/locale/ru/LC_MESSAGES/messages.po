@@ -264,8 +264,8 @@ msgid "I tailor your resume to any job posting using AI."
 msgstr "Я адаптирую ваше резюме под любую вакансию с помощью ИИ."
 
 #: src/infra/bot/templates/greet.html:5
-msgid "The bot uses a credit system. You start with 10 free credits. Each action costs 1 credit: uploading a resume, saving a job, generating a CV."
-msgstr "Бот использует систему кредитов. Вы начинаете с 10 бесплатных кредитов. Каждое действие стоит 1 кредит: загрузка резюме, сохранение вакансии, генерация резюме."
+msgid "The bot uses a credit system. You start with 50 free credits. Each action costs 1 credit: uploading a resume, saving a job, generating a CV."
+msgstr "Бот использует систему кредитов. Вы начинаете с 50 бесплатных кредитов. Каждое действие стоит 1 кредит: загрузка резюме, сохранение вакансии, генерация резюме."
 
 #: src/infra/bot/templates/greet.html:8
 msgid "Available commands:"
