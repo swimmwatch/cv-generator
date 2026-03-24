@@ -414,21 +414,21 @@ A **simple single-call pydantic-ai agent** — no LangGraph graph, no tools. It 
 
 ```mermaid
 stateDiagram-v2
-    [*] --> ParseLLM : resume_text
+    [*] --> LLMStep : resume_text
 
-    state ParseLLM {
+    state LLMStep {
         [*] --> Validate
         Validate --> [*] : is_resume=false → InvalidResumeError
         Validate --> ExtractPayload : is_resume=true
         ExtractPayload --> [*] : ResumePayload
-        note right of ParseLLM
+        note right of Validate
             temperature=0.0
             max_tokens=16384
             No tools
         end note
     }
 
-    ParseLLM --> ChunkBuilder : ResumePayload
+    LLMStep --> ChunkBuilder : ResumePayload
 
     state ChunkBuilder {
         [*] --> FullText

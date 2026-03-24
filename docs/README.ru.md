@@ -17,11 +17,14 @@
     - [Модель данных](#модель-данных)
   - [ИИ-агенты](#ии-агенты)
     - [Справочник инструментов](#справочник-инструментов)
+      - [MCP-инструменты (браузерная автоматизация через Playwright)](#mcp-инструменты-браузерная-автоматизация-через-playwright)
+      - [Внутренние инструменты (Python-функции, доступные агенту)](#внутренние-инструменты-python-функции-доступные-агенту)
     - [Агент генерации CV](#агент-генерации-cv)
     - [Агент парсинга вакансий](#агент-парсинга-вакансий)
     - [Агент парсинга резюме](#агент-парсинга-резюме)
     - [Чат-агент](#чат-агент)
   - [Технологический стек](#технологический-стек)
+    - [Наблюдаемость с Logfire](#наблюдаемость-с-logfire)
   - [Начало работы](#начало-работы)
     - [Требования](#требования)
     - [Конфигурация](#конфигурация)
@@ -412,21 +415,21 @@ stateDiagram-v2
 
 ```mermaid
 stateDiagram-v2
-    [*] --> ParseLLM : resume_text
+    [*] --> LLMStep : resume_text
 
-    state ParseLLM {
+    state LLMStep {
         [*] --> Validate
         Validate --> [*] : is_resume=false → InvalidResumeError
         Validate --> ExtractPayload : is_resume=true
         ExtractPayload --> [*] : ResumePayload
-        note right of ParseLLM
+        note right of Validate
             temperature=0.0
             max_tokens=16384
             Без инструментов
         end note
     }
 
-    ParseLLM --> ChunkBuilder : ResumePayload
+    LLMStep --> ChunkBuilder : ResumePayload
 
     state ChunkBuilder {
         [*] --> FullText
