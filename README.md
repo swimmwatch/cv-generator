@@ -21,8 +21,9 @@ git clone https://github.com/swimmwatch/cv-generator.git
 cd cv-generator
 cp .env.example .env && cp .env.local.example .env.local
 # Fill in OPENAI_API_KEY, TG_BOT_TOKEN, TG_WEBHOOK_URL in .env
+# Create S3 bucket
 make up
-make migrate
+make migrate-all
 ```
 
 See the full documentation in your preferred language above.
