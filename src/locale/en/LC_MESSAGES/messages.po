@@ -260,11 +260,11 @@ msgid "Hello! I'm a"
 msgstr ""
 
 #: src/infra/bot/templates/greet.html:2
-msgid "I create a resume tailored for a specific job opening."
+msgid "I tailor your resume to any job posting using AI."
 msgstr ""
 
 #: src/infra/bot/templates/greet.html:5
-msgid "The bot uses a credit system. You start with 10 free credits. Each action costs credits: uploading a resume, saving a job, generating a CV, or chatting."
+msgid "The bot uses a credit system. You start with 10 free credits. Each action costs 1 credit: uploading a resume, saving a job, generating a CV."
 msgstr ""
 
 #: src/infra/bot/templates/greet.html:8
@@ -272,34 +272,38 @@ msgid "Available commands:"
 msgstr ""
 
 #: src/infra/bot/templates/greet.html:10
-msgid "upload and manage your resumes"
+msgid "upload a new resume"
 msgstr ""
 
 #: src/infra/bot/templates/greet.html:12
-msgid "save a job posting"
+msgid "manage your uploaded resumes"
 msgstr ""
 
 #: src/infra/bot/templates/greet.html:14
-msgid "view saved job postings"
+msgid "add a job posting by URL"
 msgstr ""
 
 #: src/infra/bot/templates/greet.html:16
-msgid "generate a CV for a job posting"
+msgid "view saved job postings"
 msgstr ""
 
 #: src/infra/bot/templates/greet.html:18
-msgid "view generated CVs"
+msgid "generate a tailored CV for a job posting"
 msgstr ""
 
 #: src/infra/bot/templates/greet.html:20
-msgid "chat with your resumes or job postings"
+msgid "view generated CVs"
 msgstr ""
 
 #: src/infra/bot/templates/greet.html:22
-msgid "check your credit balance and costs"
+msgid "chat with your resume or job posting"
 msgstr ""
 
 #: src/infra/bot/templates/greet.html:24
+msgid "check your credit balance"
+msgstr ""
+
+#: src/infra/bot/templates/greet.html:26
 msgid "buy more credits"
 msgstr ""
 
