@@ -36,6 +36,12 @@ class Resume(Model, IdUuidMixin, TimedMixin):
         nullable=False,
         default=domains.ResumeProcessingStatus.PENDING,
     )
+    metadata_: orm.Mapped[dict] = orm.mapped_column(
+        "metadata",
+        sa.JSON,
+        nullable=False,
+        default=dict,
+    )
 
     user: orm.Mapped["User"] = orm.relationship(
         "User",

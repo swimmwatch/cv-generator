@@ -209,7 +209,6 @@ class Container(DeclarativeContainer):
         max_tokens=config.agents.resume_parser.max_tokens,
         timeout=config.agents.resume_parser.timeout,
         top_p=config.agents.resume_parser.top_p,
-        reasoning_effort=config.agents.resume_parser.reasoning_effort,
     )
     agent_checkpointer = providers.Resource(
         init_agent_checkpointer,
@@ -233,7 +232,6 @@ class Container(DeclarativeContainer):
         mcp_headers=mcp_proxy_headers,
         max_tokens=config.agents.job_parser.max_tokens,
         timeout=config.agents.job_parser.timeout,
-        reasoning_effort=config.agents.job_parser.reasoning_effort,
         checkpointer=agent_checkpointer,
     )
     cv_generator_agent = providers.Factory(

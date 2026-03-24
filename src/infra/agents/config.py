@@ -23,7 +23,6 @@ class ResumeParserSettings(AgentModelSettings):
     max_tokens: int = 16384
     timeout: float = 60.0
     top_p: float = 1.0
-    reasoning_effort: str = "low"
 
 
 class JobParserSettings(AgentModelSettings):
@@ -31,7 +30,6 @@ class JobParserSettings(AgentModelSettings):
 
     max_tokens: int = 16384
     timeout: float = 60.0
-    reasoning_effort: str = "low"
 
 
 class CvGeneratorSettings(AgentModelSettings):

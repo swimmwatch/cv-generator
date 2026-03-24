@@ -1,6 +1,5 @@
 from http import HTTPStatus
 from typing import Any
-from typing import Literal
 
 import httpx
 import logfire
@@ -50,9 +49,6 @@ _FETCH_PROMPT = "Open this page and return its full text content:\n{job_referenc
 _EXTRACT_PROMPT = "Parse the following page content into a structured job card:\n\n{page_content}"
 
 
-ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh"]
-
-
 class JobParserAgent(BaseAgent[AgentState, JobParserResult]):
     def __init__(
         self,
@@ -63,16 +59,18 @@ class JobParserAgent(BaseAgent[AgentState, JobParserResult]):
         max_retries: int = 3,
         max_tokens: int = 16384,
         timeout: float = 60.0,
-        reasoning_effort: ReasoningEffort = "low",
         checkpointer: BaseCheckpointSaver | None = None,
     ) -> None:
         self._mcp_proxy_url = mcp_proxy_url
         self._max_retries = max_retries
         self._mcp_headers = mcp_headers
-        self._model_settings = OpenAIChatModelSettings(
+        self._fetch_model_settings = OpenAIChatModelSettings(
             max_tokens=max_tokens,
             timeout=timeout,
-            openai_reasoning_effort=reasoning_effort,
+        )
+        self._extract_model_settings = OpenAIChatModelSettings(
+            max_tokens=max_tokens,
+            timeout=timeout,
         )
         model = OpenAIChatModel(
             model_name,
@@ -82,7 +80,7 @@ class JobParserAgent(BaseAgent[AgentState, JobParserResult]):
             model,
             output_type=JobCard,
             instructions=_EXTRACT_INSTRUCTIONS,
-            model_settings=self._model_settings,
+            model_settings=self._extract_model_settings,
         )
         super().__init__(model, model_token, checkpointer=checkpointer)
 
@@ -98,7 +96,7 @@ class JobParserAgent(BaseAgent[AgentState, JobParserResult]):
             output_type=str,
             toolsets=[playwright],
             instructions=_FETCH_INSTRUCTIONS,
-            model_settings=self._model_settings,
+            model_settings=self._fetch_model_settings,
         )
 
     def _build_graph(self, agent: Agent[Any, Any]) -> StateGraph:

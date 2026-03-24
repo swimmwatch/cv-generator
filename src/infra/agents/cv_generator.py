@@ -1,3 +1,5 @@
+import asyncio
+import uuid
 from http import HTTPStatus
 from json import dumps
 from typing import Any
@@ -16,6 +18,7 @@ from pydantic_ai.models import KnownModelName
 from pydantic_ai.models import Model
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
+from pydantic_ai.usage import UsageLimits
 
 from core import repos
 from infra.agents.base import BaseAgent
@@ -34,10 +37,13 @@ You have access to search tools:
 - search_vacancy_chunks: Search the job vacancy by semantic similarity.
 - search_resume_chunks: Search the candidate's resume by semantic similarity.
 
-Use search_vacancy_chunks to find and analyze specific parts of the vacancy \
-(requirements, responsibilities, qualifications, tech stack, etc.).
+Workflow (STRICT — follow exactly):
+1. Call search_vacancy_chunks ONCE with a broad query covering all sections \
+(requirements, skills, responsibilities, tech stack, seniority, education).
+2. Analyse the returned chunks. Do NOT make additional search calls.
+3. Immediately produce the structured output.
 
-For each resume template section, extract relevant vacancy signals:
+From the retrieved chunks, extract signals for each resume template section:
 - title_signals: Role title variants, seniority indicators, domain keywords.
 - about_signals: Key themes for professional summary, core competencies needed.
 - skills_signals: All required and preferred skills, technologies, tools, methodologies.
@@ -55,19 +61,15 @@ from a vector database. Queries should be specific and varied, covering:
 _EVIDENCE_INSTRUCTIONS = """\
 You map resume evidence to vacancy requirements for resume tailoring.
 
-You have access to search tools:
-- search_resume_chunks: Search the candidate's resume by semantic similarity.
-- search_vacancy_chunks: Search the job vacancy by semantic similarity.
-
-Use these tools to find supporting evidence for each vacancy requirement signal.
-Run multiple targeted queries covering skills, experience, education, achievements.
+All relevant resume chunks and vacancy chunks are provided in the prompt.
+Do NOT use any search tools — classify only from the provided context.
 
 Classification rules:
 - "direct": Evidence explicitly matches the requirement. Same skill, technology, \
 role type, or achievement pattern.
 - "adjacent": Evidence is closely related and transferable. Similar technology stack, \
 related domain, comparable scope.
-- "unsupported": No evidence in the resume chunks supports this requirement.
+- "unsupported": No evidence in the provided chunks supports this requirement.
 
 Map each evidence item to the target template field:
 - "title" for job title and role positioning
@@ -93,13 +95,84 @@ STRICT RULES:
 leadership scope, or project ownership not in the evidence.
 - Mild wording improvement is allowed, no strong exaggeration.
 - Use <strong> tags in "about" for key technologies matching the vacancy.
-- Generate the entire CV in the same language as the job vacancy.
-- Preserve contact information exactly as in the evidence.
-- Keep education entries unchanged from evidence.
+- Generate the entire CV in the language specified in the prompt.
+- Transliterate the candidate's full name into the target language script \
+(e.g., Latin for English).
+- Translate the candidate's contact information into the target language, \
+including location names.
+- Translate the candidate's education entries (degree names, institution names, \
+periods) into the target language. Transliterate institution names if needed.
+- Include ALL experience entries from the candidate's resume — never omit any.
+- Translate all experience position titles into the target language. \
+Transliterate company names into the target language script.
+- Use the evidence map to tailor experience descriptions to the vacancy, but keep every job period.
+- Translate ALL text into the target language specified in the prompt.
+- Use <strong> tags inside experience description bullets to highlight key \
+technologies or metrics that match the vacancy.
 - Prioritize skills appearing in vacancy requirements.
 - Order experience to highlight the most relevant roles first.
 - Each experience description bullet should be concise and impactful.
 - The output structure must exactly match the provided JSON template.
+"""
+
+_ANALYZE_VACANCY_PROMPT = """\
+Job title: {job_title}
+
+Job description:
+{job_text}
+
+Target resume template structure:
+{template_json}
+
+Analyze this vacancy and extract signals for each template section.
+Generate targeted search queries for resume evidence retrieval.
+"""
+
+_BUILD_EVIDENCE_MAP_PROMPT = """\
+Vacancy signals:
+- Title: {title_signals}
+- About: {about_signals}
+- Skills: {skills_signals}
+- Experience: {experience_signals}
+- Education: {education_signals}
+
+Resume chunks:
+{resume_chunks}
+
+Vacancy chunks:
+{vacancy_chunks}
+
+Map each vacancy signal to the best evidence from the chunks above and classify.
+"""
+
+_ASSEMBLE_PAYLOAD_PROMPT = """\
+Candidate full name: {full_name}
+
+Candidate contacts: {contacts}
+
+Candidate education: {education}
+
+Candidate experience (ALL entries must appear in the output): {experience}
+
+Target output language: {vacancy_language}
+
+Job title: {job_title}
+
+Job description:
+{job_text}
+
+Evidence map (direct and adjacent only):
+{evidence_items_text}
+
+Target template:
+{template_json}
+
+Assemble the tailored resume payload using only the provided evidence.
+Match the template structure exactly.
+Transliterate the full name to {vacancy_language} script.
+Translate ALL text — including location, job titles, company names,
+institution names, education, about, skills, and experience — into {vacancy_language}.
+Transliterate proper nouns (company names, institution names) if a direct translation is not available.
 """
 
 
@@ -126,11 +199,9 @@ class CvGeneratorAgent(BaseAgent[CvGeneratorState, CvGeneratorResult]):
             instructions=_VACANCY_INSTRUCTIONS,
             toolsets=[search_toolset],
         )
-        self._evidence_agent: Agent[SearchDeps] = Agent(
+        self._evidence_agent: Agent[None] = Agent(
             model,
-            deps_type=SearchDeps,
             instructions=_EVIDENCE_INSTRUCTIONS,
-            toolsets=[search_toolset],
         )
         super().__init__(model, model_token, checkpointer=checkpointer)
 
@@ -167,12 +238,10 @@ class CvGeneratorAgent(BaseAgent[CvGeneratorState, CvGeneratorResult]):
                 "resume_tailoring.analyze_vacancy",
                 job_title=state["job_title"],
             ):
-                prompt = (
-                    f"Job title: {state['job_title']}\n\n"
-                    f"Job description:\n{state['job_text']}\n\n"
-                    f"Target resume template structure:\n{state['template_json']}\n\n"
-                    "Analyze this vacancy and extract signals for each template section. "
-                    "Generate targeted search queries for resume evidence retrieval."
+                prompt = _ANALYZE_VACANCY_PROMPT.format(
+                    job_title=state["job_title"],
+                    job_text=state["job_text"],
+                    template_json=state["template_json"],
                 )
                 deps = SearchDeps(
                     resume_metadata_repo=resume_repo,
@@ -182,7 +251,12 @@ class CvGeneratorAgent(BaseAgent[CvGeneratorState, CvGeneratorResult]):
                     job_id=state["job_id"],
                 )
                 try:
-                    run_result = await vacancy_agent.run(prompt, output_type=VacancyAnalysis, deps=deps)
+                    run_result = await vacancy_agent.run(
+                        prompt,
+                        output_type=VacancyAnalysis,
+                        deps=deps,
+                        usage_limits=UsageLimits(request_limit=3),
+                    )
                     return {"vacancy_analysis": run_result.output, "error": None}
                 except (httpx.ConnectError, httpx.TimeoutException, ModelAPIError) as exc:
                     logfire.error(
@@ -196,6 +270,12 @@ class CvGeneratorAgent(BaseAgent[CvGeneratorState, CvGeneratorResult]):
                         error=str(exc),
                     )
                     return {"error": f"Vacancy analysis failed: {exc}"}
+                except Exception as exc:
+                    logfire.error(
+                        "resume_tailoring.analyze_vacancy unexpected error",
+                        error=str(exc),
+                    )
+                    return {"error": f"Unexpected error: {exc}"}
 
         async def build_evidence_map(state: CvGeneratorState) -> dict:
             with logfire.span("resume_tailoring.build_evidence_map"):
@@ -204,25 +284,50 @@ class CvGeneratorAgent(BaseAgent[CvGeneratorState, CvGeneratorResult]):
                     return {"error": "Missing vacancy analysis"}
                 signals = analysis.signals
 
-                prompt = (
-                    f"Vacancy signals:\n"
-                    f"- Title: {', '.join(signals.title_signals)}\n"
-                    f"- About: {', '.join(signals.about_signals)}\n"
-                    f"- Skills: {', '.join(signals.skills_signals)}\n"
-                    f"- Experience: {', '.join(signals.experience_signals)}\n"
-                    f"- Education: {', '.join(signals.education_signals)}\n\n"
-                    "Use the search tools to find resume and vacancy evidence for each signal. "
-                    "Then map each vacancy requirement to the best evidence and classify."
+                user_uuid = uuid.UUID(state["user_id"])
+                resume_uuid = uuid.UUID(state["resume_id"])
+                job_uuid = uuid.UUID(state["job_id"])
+
+                resume_tasks = [
+                    resume_repo.search_by_text(
+                        query=q,
+                        resume_id=resume_uuid,
+                        user_id=user_uuid,
+                        limit=4,
+                    )
+                    for q in analysis.search_queries
+                ]
+                vacancy_search = job_repo.search_by_text(
+                    query=" ".join(signals.skills_signals[:8]),
+                    job_id=job_uuid,
+                    user_id=user_uuid,
+                    limit=5,
                 )
-                deps = SearchDeps(
-                    resume_metadata_repo=resume_repo,
-                    job_metadata_repo=job_repo,
-                    user_id=state["user_id"],
-                    resume_id=state["resume_id"],
-                    job_id=state["job_id"],
+                all_results = await asyncio.gather(*resume_tasks, vacancy_search)
+
+                seen: set[str] = set()
+                resume_chunks: list[str] = []
+                for chunk_list in all_results[:-1]:
+                    for chunk in chunk_list:
+                        if chunk not in seen:
+                            seen.add(chunk)
+                            resume_chunks.append(chunk)
+                vacancy_chunks = list(dict.fromkeys(all_results[-1]))
+
+                prompt = _BUILD_EVIDENCE_MAP_PROMPT.format(
+                    title_signals=", ".join(signals.title_signals),
+                    about_signals=", ".join(signals.about_signals),
+                    skills_signals=", ".join(signals.skills_signals),
+                    experience_signals=", ".join(signals.experience_signals),
+                    education_signals=", ".join(signals.education_signals),
+                    resume_chunks="\n---\n".join(resume_chunks),
+                    vacancy_chunks="\n---\n".join(vacancy_chunks),
                 )
                 try:
-                    run_result = await evidence_agent.run(prompt, output_type=EvidenceMap, deps=deps)
+                    run_result = await evidence_agent.run(
+                        prompt,
+                        output_type=EvidenceMap,
+                    )
                     return {"evidence_map": run_result.output, "error": None}
                 except (httpx.ConnectError, httpx.TimeoutException, ModelAPIError) as exc:
                     logfire.error(
@@ -236,6 +341,12 @@ class CvGeneratorAgent(BaseAgent[CvGeneratorState, CvGeneratorResult]):
                         error=str(exc),
                     )
                     return {"error": f"Evidence mapping failed: {exc}"}
+                except Exception as exc:
+                    logfire.error(
+                        "resume_tailoring.build_evidence_map unexpected error",
+                        error=str(exc),
+                    )
+                    return {"error": f"Unexpected error: {exc}"}
 
         async def assemble_payload(state: CvGeneratorState) -> dict:
             retry = state["retries"]
@@ -256,13 +367,18 @@ class CvGeneratorAgent(BaseAgent[CvGeneratorState, CvGeneratorResult]):
                     for item in filtered
                 )
 
-                prompt = (
-                    f"Job title: {state['job_title']}\n\n"
-                    f"Job description:\n{state['job_text']}\n\n"
-                    f"Evidence map (direct and adjacent only):\n{evidence_items_text}\n\n"
-                    f"Target template:\n{state['template_json']}\n\n"
-                    "Assemble the tailored resume payload using only the provided evidence. "
-                    "Match the template structure exactly."
+                meta = state["metadata"]
+
+                prompt = _ASSEMBLE_PAYLOAD_PROMPT.format(
+                    full_name=meta.full_name,
+                    contacts=dumps(meta.contacts, ensure_ascii=False),
+                    education=dumps(meta.education, ensure_ascii=False),
+                    experience=dumps(meta.experience, ensure_ascii=False),
+                    vacancy_language=meta.vacancy_language,
+                    job_title=state["job_title"],
+                    job_text=state["job_text"],
+                    evidence_items_text=evidence_items_text,
+                    template_json=state["template_json"],
                 )
 
                 try:
@@ -365,6 +481,7 @@ class CvGeneratorAgent(BaseAgent[CvGeneratorState, CvGeneratorResult]):
         template_json = kwargs.get("template_json", "") or dumps(ResumePayload.model_json_schema(), ensure_ascii=False)
         return {
             "user_id": kwargs["user_id"],
+            "metadata": kwargs["metadata"],
             "job_text": kwargs["job_text"],
             "job_title": kwargs["job_title"],
             "job_id": kwargs["job_id"],

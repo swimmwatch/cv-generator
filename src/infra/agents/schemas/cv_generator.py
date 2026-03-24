@@ -1,3 +1,6 @@
+from dataclasses import dataclass
+from dataclasses import field
+from typing import Any
 from typing import Optional
 
 from pydantic import BaseModel
@@ -5,6 +8,15 @@ from pydantic import Field
 from typing_extensions import TypedDict
 
 from infra.agents.schemas.resume import ResumePayload
+
+
+@dataclass(frozen=True)
+class CvMetadata:
+    full_name: str
+    vacancy_language: str
+    contacts: dict[str, Any] = field(default_factory=dict)
+    education: list[dict[str, Any]] = field(default_factory=list)
+    experience: list[dict[str, Any]] = field(default_factory=list)
 
 
 class VacancySignals(BaseModel):
@@ -35,6 +47,7 @@ class EvidenceMap(BaseModel):
 
 class CvGeneratorState(TypedDict):
     user_id: str
+    metadata: CvMetadata
     job_text: str
     job_title: str
     job_id: str

@@ -16,7 +16,8 @@ class ResumeExperience(BaseModel):
     description: list[str] = Field(
         default_factory=list,
         description="Bullet points describing key achievements and responsibilities. "
-        "Each bullet should be a concise, impactful statement.",
+        "Each bullet should be a concise, impactful statement. "
+        "Use <strong> tags to highlight key technologies or metrics that match the vacancy.",
     )
     stack: list[str] = Field(default_factory=list, description="Technologies used in this role")
 

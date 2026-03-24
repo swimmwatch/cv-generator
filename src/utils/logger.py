@@ -10,6 +10,7 @@ def setup_logger(
     json_logs: bool = False,
     log_level: str | int = "INFO",
     db_log_level: str | int = "WARNING",
+    s3_log_level: str | int = "WARNING",
 ):
     shared_processors: list[typing.Callable] = [
         structlog.contextvars.merge_contextvars,
@@ -77,6 +78,7 @@ def setup_logger(
         "urllib3",
         "celery",
         "hpack",
+        "grpc",
     ]:
         logging.getLogger(_log).handlers.clear()
         logging.getLogger(_log).propagate = False
@@ -96,6 +98,8 @@ def setup_logger(
     logging.getLogger("uvicorn.access").propagate = False
 
     logging.getLogger("sqlalchemy.engine").setLevel(db_log_level)
+    logging.getLogger("botocore").setLevel(s3_log_level)
+    logging.getLogger("aiobotocore").setLevel(s3_log_level)
 
     def handle_exception(exc_type, exc_value, exc_traceback):
         """

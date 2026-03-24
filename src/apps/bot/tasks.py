@@ -23,6 +23,7 @@ from core.errors.resumes import InvalidResumeError
 from infra.agents.cv_generator import CvGeneratorAgent
 from infra.agents.job_parser import JobParserAgent
 from infra.agents.resume_parser import ResumeParser
+from infra.agents.schemas.cv_generator import CvMetadata
 from infra.agents.schemas.job import JobParserError
 from infra.agents.schemas.resume import ResumePayload
 from infra.bot.template import ResumeRenderer
@@ -190,6 +191,11 @@ async def process_resume(
                 await resume_service.update_record_title(
                     resume_id=domains.ResumeID(resume_id), title=parse_result.title
                 )
+
+            await resume_service.update_record_metadata(
+                resume_id=domains.ResumeID(resume_id),
+                metadata_=parse_result.metadata,
+            )
 
             await resume_service.update_record_status(
                 resume_id=domains.ResumeID(resume_id),
@@ -393,6 +399,7 @@ async def generate_cv(
     cv_generator_agent: CvGeneratorAgent = Provide["cv_generator_agent"],
     user_service: services.UserService = Provide["user_service"],
     job_service: services.JobService = Provide["job_service"],
+    resume_service: services.ResumeService = Provide["resume_service"],
     tg_bot: Bot = Closing[Provide["tg_bot_client"]],
     context: Context = _taskiq_context,
 ) -> None:
@@ -434,9 +441,24 @@ async def generate_cv(
     ):
         try:
             thread_id = context.message.task_id
+
+            job_metadata = job.metadata_ or {}
+            resume = await resume_service.get_by_pk(domains.ResumeID(resume_id))
+            resume_metadata = (resume.metadata_ if resume else None) or {}
+
+            vacancy_language = job_metadata.get("language_code", "en")
+            metadata = CvMetadata(
+                full_name=resume_metadata.get("full_name", ""),
+                vacancy_language=vacancy_language,
+                contacts=resume_metadata.get("contacts", {}),
+                education=resume_metadata.get("education", []),
+                experience=resume_metadata.get("experience", []),
+            )
+
             result = await cv_generator_agent.run(
                 thread_id=thread_id,
                 user_id=user_id,
+                metadata=metadata,
                 job_text=job_text,
                 job_title=job_title,
                 job_id=job_id,
@@ -463,7 +485,7 @@ async def generate_cv(
         await send_cv_document.kiq(
             tg_id,
             result.result.model_dump_json(),
-            user.language_code or "en",
+            vacancy_language,
             job_title,
             user_id,
             resume_id,

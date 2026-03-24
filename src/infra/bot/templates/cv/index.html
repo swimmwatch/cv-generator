@@ -65,11 +65,13 @@
             {% if item.description %}
               <div class="job-description">
                 {% if item.description is string %}
-                  <p>{{ item.description }}</p>
+                  <p>{{ item.description | safe }}</p>
                 {% else %}
-                  {% for paragraph in item.description %}
-                    <p>{{ paragraph }}</p>
-                  {% endfor %}
+                  <ul class="job-bullets">
+                    {% for paragraph in item.description %}
+                      <li>{{ paragraph | safe }}</li>
+                    {% endfor %}
+                  </ul>
                 {% endif %}
               </div>
             {% endif %}

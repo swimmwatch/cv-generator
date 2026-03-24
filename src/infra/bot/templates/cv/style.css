@@ -154,6 +154,16 @@ ol {
   margin-bottom: 2px;
 }
 
+.job-bullets {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.job-bullets li {
+  margin-bottom: 2px;
+  padding-left: 4px;
+}
+
 .stack {
   margin-top: 2px;
   font-size: 9.5pt;

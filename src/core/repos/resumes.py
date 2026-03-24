@@ -33,6 +33,9 @@ class ResumeRepository(typing.Protocol):
     async def update_title(self, pk: uuid.UUID, title: str) -> None:
         pass
 
+    async def update_metadata(self, pk: uuid.UUID, metadata_: dict) -> None:
+        pass
+
     async def delete(self, pk: uuid.UUID) -> None:
         pass
 
@@ -85,6 +88,9 @@ class SqlAlchemyResumeRepository:
 
     async def update_title(self, pk: uuid.UUID, title: str) -> None:
         await self._resume_dal.filter(id=pk).update(title=title)
+
+    async def update_metadata(self, pk: uuid.UUID, metadata_: dict) -> None:
+        await self._resume_dal.filter(id=pk).update(metadata_=metadata_)
 
     async def delete(self, pk: uuid.UUID) -> None:
         await self._resume_dal.filter(id=pk).delete()

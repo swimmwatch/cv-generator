@@ -1,4 +1,3 @@
-import typing
 from dataclasses import dataclass
 
 import httpx
@@ -17,6 +16,7 @@ from infra.agents.schemas.resume import ResumePayload
 class ResumeParseResult:
     title: str
     chunks: list[domains.ResumeChunk]
+    metadata: dict
 
 
 _INSTRUCTIONS = """\
@@ -44,9 +44,6 @@ Include language proficiency if present.
 """
 
 
-ReasoningEffort = typing.Literal["minimal", "low", "medium", "high"]
-
-
 class ResumeParser:
     def __init__(
         self,
@@ -56,7 +53,6 @@ class ResumeParser:
         max_tokens: int = 16384,
         timeout: float = 60.0,
         top_p: float = 1.0,
-        reasoning_effort: ReasoningEffort = "low",
     ) -> None:
         model = OpenAIChatModel(
             model_name,
@@ -71,7 +67,6 @@ class ResumeParser:
                 max_tokens=max_tokens,
                 timeout=timeout,
                 top_p=top_p,
-                openai_reasoning_effort=reasoning_effort,
             ),
         )
 
@@ -100,7 +95,8 @@ class ResumeParser:
                 resume_text=resume_text,
                 payload=payload,
             )
-            return ResumeParseResult(title=payload.title, chunks=chunks)
+            metadata = payload.model_dump(exclude={"is_resume"})
+            return ResumeParseResult(title=payload.title, chunks=chunks, metadata=metadata)
 
     def _chunk(
         self,

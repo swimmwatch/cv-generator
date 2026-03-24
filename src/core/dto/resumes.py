@@ -1,3 +1,4 @@
+import typing
 import uuid
 
 from core import domains
@@ -20,3 +21,4 @@ class ResumeOutDTO(BaseDTO, TimedMixinDTO):
     object_name: str
     file_name: str
     status: domains.ResumeProcessingStatus
+    metadata_: typing.Any = None
