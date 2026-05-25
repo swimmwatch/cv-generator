@@ -70,7 +70,7 @@ jobs:
           cat .env >> $GITHUB_OUTPUT;
           echo "EOF" >> $GITHUB_OUTPUT;
       - name: Log in to the Container registry
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee
         with:
           registry: ${{ vars.REGISTRY }}
           username: ${{ github.actor }}
@@ -105,7 +105,7 @@ jobs:
         run: |
           echo '${{ needs.build.outputs.env-file }}' > .env
       - name: Log in to the Container registry
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee
         with:
           registry: ${{ vars.REGISTRY }}
           username: ${{ github.actor }}
